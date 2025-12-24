@@ -1,0 +1,4 @@
+
+# Bifrost runtime files (local only)
+.bifrost/logs/
+.bifrost/active-workflow

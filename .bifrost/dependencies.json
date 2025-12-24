@@ -1,0 +1,68 @@
+{
+  "lastUpdated": "",
+  "project": {
+    "name": "",
+    "version": "",
+    "description": ""
+  },
+  "packageManagers": {
+    "node": null,
+    "python": null,
+    "rust": null,
+    "go": null,
+    "java": null
+  },
+  "frameworks": {
+    "frontend": [],
+    "backend": [],
+    "mobile": [],
+    "testing": []
+  },
+  "databases": {
+    "primary": null,
+    "cache": null,
+    "search": null
+  },
+  "infrastructure": {
+    "cloud": null,
+    "containerization": null,
+    "orchestration": null,
+    "monitoring": []
+  },
+  "cicd": {
+    "github": false,
+    "gitlab": false,
+    "jenkins": false,
+    "custom": []
+  },
+  "security": {
+    "authentication": [],
+    "authorization": [],
+    "secrets": null,
+    "scanning": []
+  },
+  "monitoring": {
+    "logging": [],
+    "metrics": [],
+    "tracing": [],
+    "alerting": []
+  },
+  "devtools": {
+    "linting": [],
+    "formatting": [],
+    "bundling": [],
+    "testing": []
+  },
+  "dependencies": {
+    "production": {},
+    "development": {},
+    "vulnerabilities": [],
+    "outdated": []
+  },
+  "architecture": {
+    "pattern": null,
+    "layers": [],
+    "communication": [],
+    "dataFlow": null
+  }
+}

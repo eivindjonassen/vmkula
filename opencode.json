@@ -1,0 +1,87 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "anthropic/claude-sonnet-4-5",
+  "tools": {
+    "write": true,
+    "bash": true
+  },
+  "permission": {
+    "write": "ask",
+    "bash": "ask",
+    "read": "allow",
+    "cat": "allow",
+    "cd": "allow",
+    "doom_loop": "ask",
+    
+    "find": "allow",
+    "grep": "allow",
+    "grep -c": "allow",
+    "grep -n": "allow",
+    "grep -r": "allow",
+    "grep -o": "allow",
+    "grep -i": "allow",
+    "grep -E": "allow",
+    "grep -l": "allow",
+    "grep -v": "allow",
+    "grep -q": "allow",
+    
+    "git status": "allow",
+    "git diff": "allow",
+    "git log": "allow",
+    "git branch": "allow",
+    "git show": "allow",
+    "git ls-files": "allow",
+    "git rev-parse": "allow",
+    
+    "ls": "allow",
+    "ls -la": "allow",
+    "ls -l": "allow",
+    "ls -a": "allow",
+    "pwd": "allow",
+    "wc": "allow",
+    "wc -l": "allow",
+    
+    "head": "allow",
+    "tail": "allow",
+    "sort": "allow",
+    "uniq": "allow",
+    "tr": "allow",
+    "cut": "allow",
+    "sed": "allow",
+    "awk": "allow",
+    "echo": "allow",
+    
+    "chmod +x": "allow",
+    "mkdir -p": "allow",
+    "touch": "allow",
+    "date": "allow",
+    "basename": "allow",
+    "dirname": "allow",
+    "rmdir": "allow",
+    
+    "npm test": "allow",
+    "npm run build": "allow",
+    "npm run lint": "allow",
+    "npm run test": "allow",
+    
+    "go test": "allow",
+    "go build": "allow",
+    "go run": "allow",
+    "go mod": "allow",
+    
+    "python -m pytest": "allow",
+    "pytest": "allow",
+    
+    "make test": "allow",
+    "make build": "allow",
+    
+    "rm -rf": "ask",
+    "rm": "ask",
+    "git add": "ask",
+    "git commit": "ask",
+    "git push": "ask",
+    "npm install": "ask",
+    "npm ci": "ask"
+  },
+  "instructions": ["AGENTS.md"]
+}
