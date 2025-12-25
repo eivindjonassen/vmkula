@@ -67,7 +67,8 @@ export interface Match {
  */
 export interface TournamentSnapshot {
   groups: Record<string, Group>
-  bracket: Match[]
+  matches: Match[]  // Group stage matches
+  bracket: Match[]  // Knockout matches
   aiSummary: string
   favorites: string[]
   darkHorses: string[]

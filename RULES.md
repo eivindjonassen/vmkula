@@ -106,17 +106,101 @@ This project uses the Firebase MCP server for Firestore operations during develo
    ```
 
 **Available MCP Tools**:
-- `firestore_query` - Query Firestore collections
-- `firestore_get` - Get specific Firestore documents
-- `firestore_set` - Write to Firestore documents
-- `firestore_update` - Update Firestore documents
-- `firestore_delete` - Delete Firestore documents
+
+**Authentication & Project Management**:
+- `firebase_login` - Sign in to Firebase CLI
+- `firebase_logout` - Sign out of Firebase CLI
+- `firebase_get_environment` - Get current Firebase environment config
+- `firebase_update_environment` - Update environment (project, user, project_dir)
+- `firebase_get_project` - Get active project info
+- `firebase_list_projects` - List available projects
+- `firebase_create_project` - Create new Firebase project
+- `firebase_list_apps` - List Firebase apps (iOS, Android, Web)
+- `firebase_create_app` - Create new Firebase app
+- `firebase_get_sdk_config` - Get Firebase SDK configuration
+
+**Firestore Operations**:
+- `firebase_firestore_get_documents` - Get specific documents by path
+- `firebase_firestore_query_collection` - Query collection with filters
+- `firebase_firestore_list_collections` - List all collections
+- `firebase_firestore_delete_document` - Delete a document
+
+**Realtime Database**:
+- `firebase_realtimedatabase_get_data` - Read data from RTDB
+- `firebase_realtimedatabase_set_data` - Write data to RTDB
+
+**Authentication**:
+- `firebase_auth_get_users` - Get users by UID/email/phone
+- `firebase_auth_update_user` - Update user claims or disable/enable
+- `firebase_auth_set_sms_region_policy` - Set SMS region restrictions
+
+**Cloud Storage**:
+- `firebase_storage_get_object_download_url` - Get download URL for storage objects
+
+**Cloud Messaging**:
+- `firebase_messaging_send_message` - Send push notifications
+
+**Remote Config**:
+- `firebase_remoteconfig_get_template` - Get Remote Config template
+- `firebase_remoteconfig_update_template` - Update Remote Config
+
+**Initialization & Security**:
+- `firebase_init` - Initialize Firebase services (Firestore, Storage, Hosting, etc.)
+- `firebase_validate_security_rules` - Validate security rules syntax
+- `firebase_get_security_rules` - Get current security rules
+- `firebase_read_resources` - Read firebase:// resources
 
 **Usage Guidelines**:
 - ✅ Use Firebase MCP for manual data inspection and testing
 - ✅ Use Firebase MCP for seeding test data
+- ✅ Use `firebase_firestore_query_collection` with filters for complex queries
+- ✅ Use `firebase_update_environment` to switch between projects or set active project
+- ✅ Use `firebase_validate_security_rules` before deploying security rules
 - ❌ Do NOT use Firebase MCP in production backend code (use Python SDK instead)
 - ❌ Do NOT commit service account keys to git
+- ❌ Do NOT use `use_emulator: true` parameter in production queries
+
+**Common Command Patterns**:
+
+1. **Query Firestore Collection**:
+   ```typescript
+   firebase_firestore_query_collection({
+     collection_path: "predictions",
+     filters: [{
+       field: "timestamp",
+       op: "GREATER_THAN",
+       compare_value: { integer_value: 1735132800 }
+     }],
+     limit: 10,
+     order: {
+       orderBy: "timestamp",
+       orderByDirection: "DESCENDING"
+     }
+   })
+   ```
+
+2. **Get Specific Document**:
+   ```typescript
+   firebase_firestore_get_documents({
+     paths: ["predictions/latest"],
+     database: "(default)"
+   })
+   ```
+
+3. **Switch Active Project**:
+   ```typescript
+   firebase_update_environment({
+     active_project: "vmkula-2026"
+   })
+   ```
+
+4. **Validate Security Rules**:
+   ```typescript
+   firebase_validate_security_rules({
+     type: "firestore",
+     source_file: "firestore.rules"
+   })
+   ```
 
 ---
 

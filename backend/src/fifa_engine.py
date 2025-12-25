@@ -30,6 +30,39 @@ class BracketMatch:
 
 
 class FifaEngine:
+    def initialize_group_standings(
+        self, group_letter: str, team_names: List[str]
+    ) -> List[GroupStanding]:
+        """
+        Initialize group standings with teams that have played 0 matches.
+
+        Args:
+            group_letter: Group letter (A, B, C, etc.)
+            team_names: List of team names in the group
+
+        Returns:
+            List of GroupStanding objects with all stats at 0
+        """
+        standings = []
+        for i, team_name in enumerate(team_names, start=1):
+            standings.append(
+                GroupStanding(
+                    team_name=team_name,
+                    group_letter=group_letter,
+                    rank=i,  # Initial alphabetical or insertion order rank
+                    played=0,
+                    won=0,
+                    draw=0,
+                    lost=0,
+                    goals_for=0,
+                    goals_against=0,
+                    goal_difference=0,
+                    points=0,
+                    fair_play_points=0,
+                )
+            )
+        return standings
+
     def calculate_standings(
         self, group_letter: str, results: List[Dict], cards: Optional[List[Dict]] = None
     ) -> List[GroupStanding]:
