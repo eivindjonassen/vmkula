@@ -43,11 +43,24 @@ lerna-debug.log*
 coverage/
 .nyc_output/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+venv/
+env/
+.pytest_cache/
+htmlcov/
+
 # Cache directories
 .cache/
 .parcel-cache/
 .eslintcache
 .stylelintcache
+backend/cache/
 
 # Temporary files
 *.tmp
