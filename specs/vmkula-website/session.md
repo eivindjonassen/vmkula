@@ -6,10 +6,10 @@
 
 - **Feature**: vmkula-website
 - **Phase**: implement
-- **Status**: Awaiting next action
+- **Status**: Active
 - **Active Task**:
-  - **Task ID**: All tasks complete
-  - **Description**: Phase 4 finished - Integration & Polish complete
+  - **Task ID**: T041
+  - **Description**: Create Dockerfile for backend (Cloud Run deployment)
   - **Progress**: 39/62 tasks complete (63%)
 
 ## 📝 Recent Session Context
