@@ -88,3 +88,75 @@ def test_form_string_generation():
     ]
     metrics = aggregator.compute_metrics(fixtures)
     assert metrics.form_string == "L-D-W"  # Reversed order (latest first)
+
+
+def test_cache_logic(tmp_path):
+    """
+    CRITICAL TEST: Use cached data if less than 24 hours old.
+    Test cache file naming and expiration.
+    """
+    import os
+    import json
+    from datetime import datetime, timedelta
+
+    aggregator = DataAggregator()
+    # Mock cache directory using tmp_path
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    aggregator.cache_dir = str(cache_dir)
+
+    team_id = 1
+    today = datetime.now().strftime("%Y-%m-%d")
+    cache_file = cache_dir / f"team_stats_{team_id}_{today}.json"
+
+    # 1. Test cache miss
+    assert aggregator.get_cached_stats(team_id) is None
+
+    # 2. Test cache hit (write mock data)
+    mock_stats = {
+        "avg_xg": 1.5,
+        "clean_sheets": 2,
+        "form_string": "W-W",
+        "data_completeness": 1.0,
+        "confidence": "high",
+    }
+    with open(cache_file, "w") as f:
+        json.dump(mock_stats, f)
+
+    cached = aggregator.get_cached_stats(team_id)
+    assert cached is not None
+    assert cached["avg_xg"] == 1.5
+
+    # 3. Test cache expiration (mocking file age)
+    # Actually, the file naming includes the date {YYYY-MM-DD}.
+    # If we check for a different date, it should be a miss.
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    old_cache_file = cache_dir / f"team_stats_{team_id}_{yesterday}.json"
+    with open(old_cache_file, "w") as f:
+        json.dump(mock_stats, f)
+
+    # If the aggregator only looks for today's file, it will miss yesterday's.
+    # Plan says: "data older than 24 hours is refetched".
+    # If we use the date in filename, it's naturally expired when the day changes.
+    assert aggregator.get_cached_stats(team_id) is not None  # still hits today's
+
+    # Removing today's to check miss on yesterday's
+    os.remove(cache_file)
+    assert aggregator.get_cached_stats(team_id) is None
+
+
+def test_save_to_cache(tmp_path):
+    """Test saving stats to cache creates directory and file."""
+    aggregator = DataAggregator()
+    cache_dir = tmp_path / "new_cache"
+    aggregator.cache_dir = str(cache_dir)
+
+    team_id = 1
+    stats = {"avg_xg": 1.5, "clean_sheets": 2}
+
+    aggregator.save_to_cache(team_id, stats)
+
+    assert cache_dir.exists()
+    today = datetime.now().strftime("%Y-%m-%d")
+    cache_file = cache_dir / f"team_stats_{team_id}_{today}.json"
+    assert cache_file.exists()

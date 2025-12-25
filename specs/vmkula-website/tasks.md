@@ -101,30 +101,7 @@ Expected to FAIL until T028 is implemented
 Run pytest to verify T006 passes
 **Dependencies**: T006
 **Parallel**: No
-**Status**: 
-### T018: Implement FIFA standings calculation in fifa_engine.py
-**File**: `backend/src/fifa_engine.py`
-**Description**: Implement group standings logic to pass T007 tests:
-- Create FifaEngine class with `calculate_standings(results)` method
-- Calculate points: won*3 + draw*1
-- Calculate goal_difference: goals_for - goals_against
-- Implement Fair Play Points from cards data (yellow=-1, 2nd yellow=-3, red=-4)
-- **CRITICAL: Implement resolve_tie_breaker with deterministic final fallback**:
-  - Tiebreaker sequence: Points > GD > Goals > H2H > Fair Play
-  - **For the final draw of lots, implement a deterministic random seed based on team names (e.g., hash(TeamA + TeamB))**
-  - **Do NOT use standard random functions (random.choice(), random.random()) that change on every run**
-  - This prevents the "Flickering Website" problem where rankings change randomly on each backend run
-- Implement tiebreaker sorting (see plan.md lines 469-492):
-  1. Points (descending)
-  2. Goal Difference (descending)
-  3. Goals Scored (descending)
-  4. Fair Play Points (ascending - less negative is better)
-  5. Deterministic seed: hash(team_name) for final fallback
-- Return Dict[str, List[GroupStanding]] with groups A-L
-Run pytest to verify T007 passes
-**Dependencies**: T007, T017
-**Parallel**: No
-**Status**: 
+**Status**: ✅ Complete
 ### T019: Implement third-place team ranking in fifa_engine.py
 **File**: `backend/src/fifa_engine.py` (additional method)
 **Description**: Implement third-place qualification logic to pass T008 tests:
