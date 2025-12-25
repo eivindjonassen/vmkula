@@ -10,12 +10,22 @@ Implements:
 """
 
 import json
+import logging
 import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
+
+from src.exceptions import APIRateLimitError, DataAggregationError
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 
 @dataclass
@@ -117,11 +127,15 @@ class DataAggregator:
         if cache_file.exists():
             try:
                 with open(cache_file, "r") as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, IOError):
+                    stats = json.load(f)
+                    logger.info(f"Cache HIT for team {team_id}")
+                    return stats
+            except (json.JSONDecodeError, IOError) as e:
                 # Corrupted cache file - treat as miss
+                logger.warning(f"Cache file corrupted for team {team_id}: {e}")
                 return None
 
+        logger.info(f"Cache MISS for team {team_id}")
         return None
 
     def save_to_cache(self, team_id: int, stats: Dict[str, Any]) -> None:
@@ -134,15 +148,20 @@ class DataAggregator:
             team_id: Team ID
             stats: Statistics dictionary to cache
         """
-        # Create cache directory if it doesn't exist
-        cache_path = Path(self.cache_dir)
-        cache_path.mkdir(parents=True, exist_ok=True)
+        try:
+            # Create cache directory if it doesn't exist
+            cache_path = Path(self.cache_dir)
+            cache_path.mkdir(parents=True, exist_ok=True)
 
-        today = datetime.now().strftime("%Y-%m-%d")
-        cache_file = cache_path / f"team_stats_{team_id}_{today}.json"
+            today = datetime.now().strftime("%Y-%m-%d")
+            cache_file = cache_path / f"team_stats_{team_id}_{today}.json"
 
-        with open(cache_file, "w") as f:
-            json.dump(stats, f, indent=2)
+            with open(cache_file, "w") as f:
+                json.dump(stats, f, indent=2)
+
+            logger.info(f"Saved cache for team {team_id}")
+        except (IOError, OSError) as e:
+            logger.error(f"Failed to save cache for team {team_id}: {e}")
 
     def fetch_from_api(self, team_id: int) -> Dict[str, Any]:
         """
@@ -182,32 +201,58 @@ class DataAggregator:
             Stats dictionary from API
 
         Raises:
-            Exception: "Max retries exceeded" after 4 total attempts
+            DataAggregationError: After 4 total attempts (max retries exceeded)
+            APIRateLimitError: On 429 rate limit errors
         """
         max_retries = 3
         retry_delays = [1, 2, 4]
+
+        logger.info(f"Fetching stats for team {team_id}")
+        start_time = time.time()
 
         for attempt in range(max_retries + 1):
             # Rate limiting: 0.5s delay between requests
             # Sleep on all requests except the very first one
             if self.last_request_time > 0:
                 time.sleep(0.5)
+                logger.debug(f"Rate limit delay: 0.5s")
 
             try:
                 result = self.fetch_from_api(team_id)
                 self.last_request_time = time.time()
+                elapsed = time.time() - start_time
+                logger.info(
+                    f"API call SUCCESS for team {team_id} (attempt {attempt + 1}, elapsed {elapsed:.2f}s)"
+                )
                 return result
 
             except Exception as e:
                 error_msg = str(e)
+                elapsed = time.time() - start_time
+
+                # Check for rate limit error
+                if "429" in error_msg or "rate limit" in error_msg.lower():
+                    logger.warning(
+                        f"Rate limit hit for team {team_id} (attempt {attempt + 1})"
+                    )
+                    if attempt == max_retries:
+                        raise APIRateLimitError(
+                            f"Rate limit exceeded for team {team_id}"
+                        )
 
                 # On last attempt, raise final exception
                 if attempt == max_retries:
-                    raise Exception("Max retries exceeded") from e
+                    logger.error(
+                        f"API call FAILED for team {team_id} after {attempt + 1} attempts (elapsed {elapsed:.2f}s): {error_msg}"
+                    )
+                    raise DataAggregationError(team_id, "Max retries exceeded") from e
 
                 # Exponential backoff
                 delay = retry_delays[attempt]
+                logger.warning(
+                    f"API call failed (attempt {attempt + 1}), retrying in {delay}s: {error_msg}"
+                )
                 time.sleep(delay)
 
         # Should never reach here, but satisfy type checker
-        raise Exception("Max retries exceeded")
+        raise DataAggregationError(team_id, "Max retries exceeded")

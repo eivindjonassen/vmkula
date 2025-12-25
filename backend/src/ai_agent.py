@@ -9,6 +9,7 @@ Implements:
 """
 
 import json
+import logging
 import time
 from typing import Dict, Any, Optional
 
@@ -23,6 +24,14 @@ except ImportError:
     GENAI_VERSION = "legacy"
 
 from src.config import config
+from src.exceptions import GeminiFailureError
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 
 class AIAgent:
@@ -71,6 +80,14 @@ class AIAgent:
                 - confidence: str (only for rule-based fallback)
         """
         max_retries = 1
+        home_name = matchup.get("home_team", {}).get("name", "Unknown")
+        away_name = matchup.get("away_team", {}).get("name", "Unknown")
+        match_id = matchup.get("match_id", "N/A")
+
+        logger.info(
+            f"Generating prediction for match {match_id}: {home_name} vs {away_name}"
+        )
+        start_time = time.time()
 
         for attempt in range(max_retries + 1):
             try:
@@ -79,14 +96,31 @@ class AIAgent:
 
                 # Validate response has required fields
                 self._validate_prediction(parsed)
+
+                elapsed = time.time() - start_time
+                logger.info(
+                    f"Gemini prediction SUCCESS for match {match_id} (attempt {attempt + 1}, elapsed {elapsed:.2f}s): {parsed.get('winner')}"
+                )
                 return parsed
 
             except Exception as e:
+                elapsed = time.time() - start_time
+
                 if attempt == max_retries:
                     # Final attempt failed - use rule-based fallback
-                    return self.rule_based_prediction(matchup)
+                    logger.warning(
+                        f"Gemini prediction FAILED for match {match_id} after {attempt + 1} attempts (elapsed {elapsed:.2f}s), using rule-based fallback: {e}"
+                    )
+                    fallback = self.rule_based_prediction(matchup)
+                    logger.info(
+                        f"Rule-based fallback for match {match_id}: {fallback.get('winner')}"
+                    )
+                    return fallback
 
                 # Backoff before retry
+                logger.warning(
+                    f"Gemini prediction failed (attempt {attempt + 1}), retrying in 1s: {e}"
+                )
                 time.sleep(1)
 
         # Should never reach here, but satisfy type checker
@@ -105,7 +139,7 @@ class AIAgent:
             Gemini response object with .text attribute
 
         Raises:
-            Exception: On API failures
+            GeminiFailureError: On API failures
         """
         home = matchup["home_team"]
         away = matchup["away_team"]
@@ -132,26 +166,40 @@ Provide prediction as JSON with this exact schema:
   "reasoning": "brief explanation (max 200 chars)"
 }}"""
 
-        if GENAI_VERSION == "new":
-            # New SDK: use generate_content with JSON response schema
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.7,
-                ),
-            )
+        logger.debug(f"Calling Gemini API with prompt: {prompt[:100]}...")
+        api_start = time.time()
 
-            # Wrap in object with .text attribute for compatibility
-            class ResponseWrapper:
-                def __init__(self, text):
-                    self.text = text
+        try:
+            if GENAI_VERSION == "new":
+                # New SDK: use generate_content with JSON response schema
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.7,
+                    ),
+                )
 
-            return ResponseWrapper(response.text)
-        else:
-            # Legacy SDK
-            return self.model.generate_content(prompt)
+                # Wrap in object with .text attribute for compatibility
+                class ResponseWrapper:
+                    def __init__(self, text):
+                        self.text = text
+
+                api_elapsed = time.time() - api_start
+                logger.debug(f"Gemini API response time: {api_elapsed:.2f}s")
+                return ResponseWrapper(response.text)
+            else:
+                # Legacy SDK
+                result = self.model.generate_content(prompt)
+                api_elapsed = time.time() - api_start
+                logger.debug(f"Gemini API response time: {api_elapsed:.2f}s")
+                return result
+
+        except Exception as e:
+            api_elapsed = time.time() - api_start
+            logger.error(f"Gemini API call failed (elapsed {api_elapsed:.2f}s): {e}")
+            raise GeminiFailureError(f"Gemini API error: {e}", attempts=1) from e
 
     def _parse_response(self, response_text: str) -> Dict[str, Any]:
         """
@@ -170,16 +218,28 @@ Provide prediction as JSON with this exact schema:
         """
         text = response_text.strip()
 
+        logger.debug(f"Parsing Gemini response: {text[:100]}...")
+
         # Strip markdown code blocks if present
         if text.startswith("```json"):
+            logger.debug("Stripping ```json code block wrapper")
             text = text.replace("```json", "", 1)
         if text.startswith("```"):
+            logger.debug("Stripping ``` code block wrapper")
             text = text.replace("```", "", 1)
         if text.endswith("```"):
             text = text.rsplit("```", 1)[0]
 
         text = text.strip()
-        return json.loads(text)
+
+        try:
+            parsed = json.loads(text)
+            logger.debug(f"Successfully parsed JSON response")
+            return parsed
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {e}")
+            logger.error(f"Raw response text: {text}")
+            raise
 
     def _validate_prediction(self, prediction: Dict[str, Any]) -> None:
         """
