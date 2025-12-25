@@ -31,23 +31,6 @@ Expected to FAIL until T015 is implemented
 **Dependencies**: T007
 **Parallel**: No
 **Status**: ✅ Complete
-### T010: Create test for API-Football data aggregation
-**File**: `backend/tests/test_data_aggregator.py`
-**Description**: Create failing tests for team statistics calculation:
-- Test fetching last 5 fixtures from API-Football (mock response)
-- Test xG average calculation from fixtures with complete data
-- CRITICAL TEST: Handle missing xG data (see plan.md lines 356-380)
-  - Scenario: 5 matches, only 3 have xG data
-  - Expected: avg_xg = (2.4 + 0.8 + 2.2) / 3 = 1.8
-  - Expected: data_completeness = 0.6 (3/5)
-  - Expected: confidence = "medium"
-- Test clean sheets count (matches with goals_against=0)
-- Test form string generation ("W-W-D-L-W" pattern)
-- Test fallback mode when NO xG data available (fallback_mode="traditional_form")
-Expected to FAIL until T017 is implemented
-**Dependencies**: T002
-**Parallel**: Yes [P]
-**Status**: 
 ### T011: Create test for API caching logic
 **File**: `backend/tests/test_data_aggregator.py` (additional tests)
 **Description**: Create failing tests for local cache management:

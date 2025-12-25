@@ -286,3 +286,69 @@ def test_third_place_deterministic_fallback():
     qualified2 = engine.rank_third_place_teams(full_standings)
 
     assert [q.team_name for q in qualified1] == [q.team_name for q in qualified2]
+
+
+def test_resolve_knockout_bracket():
+    """
+    Test knockout matchup resolution.
+    Resolves "Winner A vs 3rd Place C/D/E" with actual qualified teams.
+    """
+    engine = FifaEngine()
+
+    from dataclasses import dataclass
+
+    @dataclass
+    class MockStanding:
+        team_name: str
+        group_letter: str
+        rank: int
+
+    @dataclass
+    class MockMatch:
+        match_number: int
+        home_team_label: str
+        away_team_label: str
+        venue: str
+        kickoff_at: str
+        home_team_id: int = None
+        away_team_id: int = None
+
+    # Mock standings
+    standings = {
+        "A": [MockStanding("Team A1", "A", 1), MockStanding("Team A2", "A", 2)],
+        "B": [MockStanding("Team B1", "B", 1), MockStanding("Team B2", "B", 2)],
+    }
+
+    # Mock third-place qualifiers
+    third_place_qualifiers = [
+        MockStanding("Team C3", "C", 3),
+        MockStanding("Team D3", "D", 3),
+        MockStanding("Team E3", "E", 3),
+    ]
+
+    # Mock knockout matches from SQLite
+    knockout_matches = [
+        MockMatch(
+            49, "Winner A", "3rd Place C/D/E", "MetLife Stadium", "2026-06-28T18:00:00"
+        ),
+        MockMatch(50, "Winner B", "Runner-up A", "SoFi Stadium", "2026-06-28T21:00:00"),
+    ]
+
+    # In reality, the engine will need mapping rules for "3rd Place C/D/E"
+    # For now we'll assume it handles the resolution logic
+    resolved = engine.resolve_knockout_bracket(
+        standings, third_place_qualifiers, knockout_matches
+    )
+
+    assert len(resolved) == 2
+
+    # Match 49: Winner A (Team A1) vs 3rd Place C/D/E (Team C3)
+    m49 = next(m for m in resolved if m.match_number == 49)
+    assert m49.home_team_name == "Team A1"
+    assert m49.away_team_name == "Team C3"
+    assert m49.venue == "MetLife Stadium"
+
+    # Match 50: Winner B (Team B1) vs Runner-up A (Team A2)
+    m50 = next(m for m in resolved if m.match_number == 50)
+    assert m50.home_team_name == "Team B1"
+    assert m50.away_team_name == "Team A2"
