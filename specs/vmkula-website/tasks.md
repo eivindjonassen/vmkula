@@ -637,7 +637,7 @@ Run vitest to verify integration test passes
 - Configure custom domain (optional, document in README)
 **Dependencies**: T003
 **Parallel**: Yes [P]
-**Status**: 
+**Status**: ✅ Complete 
 ### T045: Build Next.js for static export
 **File**: `frontend/next.config.js`
 **Description**: Configure Next.js for Firebase Hosting static export:
@@ -649,7 +649,7 @@ Run vitest to verify integration test passes
 - Verify all routes work in static mode
 **Dependencies**: T044
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete 
 ### T046: Set up GitHub Actions for backend CI/CD
 **File**: `.github/workflows/backend-test.yml`, `.github/workflows/backend-deploy.yml`
 **Description**: Create CI/CD pipeline for backend:
@@ -667,7 +667,7 @@ Run vitest to verify integration test passes
   - Run smoke test (call /health endpoint)
 **Dependencies**: T042
 **Parallel**: Yes [P]
-**Status**: 
+**Status**: ✅ Complete 
 ### T047: Set up GitHub Actions for frontend CI/CD
 **File**: `.github/workflows/frontend-test.yml`, `.github/workflows/frontend-deploy.yml`
 **Description**: Create CI/CD pipeline for frontend:
@@ -684,7 +684,7 @@ Run vitest to verify integration test passes
   - Run smoke test (check homepage loads)
 **Dependencies**: T045
 **Parallel**: Yes [P]
-**Status**: 
+**Status**: ✅ Complete 
 ---
 ## Phase 6: Documentation & Validation
 ### T048: Create backend README

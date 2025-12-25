@@ -1,0 +1,67 @@
+# Backend Test Workflow
+# Runs on every push to backend/ directory
+# Ensures code quality and test coverage before deployment
+
+name: Backend Tests
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-test.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-test.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'backend/requirements-dev.txt'
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      
+      - name: Run pytest with coverage
+        env:
+          # Provide test environment variables
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY_TEST || 'test-key' }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY_TEST || 'test-key' }}
+          FIRESTORE_PROJECT_ID: 'test-project'
+        run: |
+          cd backend
+          pytest --cov=src --cov-report=term --cov-report=xml --cov-report=html -v
+      
+      - name: Check coverage threshold
+        run: |
+          cd backend
+          coverage report --fail-under=80
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+      
+      - name: Upload coverage HTML
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: backend/htmlcov/
+          retention-days: 7

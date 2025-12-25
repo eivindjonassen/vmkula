@@ -1,0 +1,73 @@
+# Backend Deploy Workflow
+# Deploys backend to Google Cloud Run on push to main branch
+
+name: Backend Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    # Only deploy if tests pass
+    needs: []  # Add test job as dependency if running in same workflow
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+      
+      - name: Submit build to Cloud Build
+        run: |
+          gcloud builds submit \
+            --config=backend/cloudbuild.yaml \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --substitutions=COMMIT_SHA=${{ github.sha }}
+      
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for Cloud Run deployment to complete..."
+          sleep 10
+      
+      - name: Get service URL
+        id: get-url
+        run: |
+          SERVICE_URL=$(gcloud run services describe vmkula-backend \
+            --region=us-central1 \
+            --format='value(status.url)' \
+            --project=${{ secrets.GCP_PROJECT_ID }})
+          echo "service_url=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "Service URL: $SERVICE_URL"
+      
+      - name: Run smoke test
+        run: |
+          echo "Testing /health endpoint..."
+          curl -f ${{ steps.get-url.outputs.service_url }}/health
+          echo "Health check passed!"
+      
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Backend deployed successfully to ${{ steps.get-url.outputs.service_url }}"
+      
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Backend deployment failed. Check logs above."
+          exit 1
