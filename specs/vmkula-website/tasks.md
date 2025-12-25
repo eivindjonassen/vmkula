@@ -35,18 +35,6 @@ Run pytest to verify T006 passes
 **Dependencies**: T006
 **Parallel**: No
 **Status**: ✅ Complete
-### T019: Implement third-place team ranking in fifa_engine.py
-**File**: `backend/src/fifa_engine.py` (additional method)
-**Description**: Implement third-place qualification logic to pass T008 tests:
-- Add method `rank_third_place_teams(standings)` to FifaEngine
-- Extract all 3rd-place teams from 12 groups
-- Sort by same criteria as group standings (points, GD, goals, fair play, hash)
-- Select top 8 teams
-- Return List[GroupStanding] with selected third-place qualifiers
-Run pytest to verify T008 passes
-**Dependencies**: T008, T018
-**Parallel**: No
-**Status**: 
 ### T020: Implement Round of 32 bracket resolution in fifa_engine.py
 **File**: `backend/src/fifa_engine.py` (additional method)
 **Description**: Implement knockout matchup resolution to pass T009 tests:
