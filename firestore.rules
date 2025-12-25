@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read access to predictions
+    match /predictions/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+    // Allow public read access to match history
+    match /matches/{matchId}/history/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
