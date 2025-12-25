@@ -113,7 +113,7 @@ def update_predictions() -> Dict[str, Any]:
         updated_at = datetime.utcnow().isoformat()
 
         # Step 1: Load tournament data from SQLite
-        db = DBManager("backend/worldcup2026.db")
+        db = DBManager(str(DB_PATH))
         teams = db.load_all_teams()
         all_matches = db.load_all_matches()
         knockout_matches = db.load_knockout_matches()
