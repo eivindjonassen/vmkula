@@ -1,0 +1,89 @@
+# Cloud Run service specification for vmkula-backend
+# This file can be used with `gcloud run services replace service.yaml`
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: vmkula-backend
+  labels:
+    app: vmkula
+    component: backend
+    environment: production
+spec:
+  template:
+    metadata:
+      annotations:
+        # Auto-scale based on CPU and concurrency
+        autoscaling.knative.dev/minScale: '0'
+        autoscaling.knative.dev/maxScale: '5'
+        # Use second-generation execution environment
+        run.googleapis.com/execution-environment: gen2
+        # VPC connector (optional, if needed for private resources)
+        # run.googleapis.com/vpc-access-connector: projects/PROJECT_ID/locations/REGION/connectors/CONNECTOR_NAME
+    spec:
+      # Service account with Firestore write permissions
+      serviceAccountName: vmkula-backend-sa@PROJECT_ID.iam.gserviceaccount.com
+      
+      # Container timeout (5 minutes for AI calls)
+      timeoutSeconds: 300
+      
+      # Max concurrent requests per container instance
+      containerConcurrency: 10
+      
+      containers:
+        - name: vmkula-backend
+          # Image will be set by Cloud Build
+          image: gcr.io/PROJECT_ID/vmkula-backend:latest
+          
+          ports:
+            - name: http1
+              containerPort: 8080
+          
+          # Resource limits
+          resources:
+            limits:
+              cpu: '1'
+              memory: 512Mi
+          
+          # Environment variables
+          env:
+            - name: PYTHONUNBUFFERED
+              value: '1'
+            - name: PORT
+              value: '8080'
+            - name: ENVIRONMENT
+              value: 'production'
+          
+          # Secret environment variables (managed in Google Secret Manager)
+          envFrom:
+            - secretRef:
+                name: GEMINI_API_KEY
+            - secretRef:
+                name: API_FOOTBALL_KEY
+            - secretRef:
+                name: FIRESTORE_PROJECT_ID
+          
+          # Startup probe (wait up to 30s for app to start)
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 0
+            timeoutSeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
+          
+          # Liveness probe (check if app is healthy)
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 30
+            failureThreshold: 3
+  
+  traffic:
+    # Route 100% of traffic to latest revision
+    - latestRevision: true
+      percent: 100

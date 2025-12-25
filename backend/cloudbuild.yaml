@@ -1,0 +1,59 @@
+# Cloud Build configuration for automated backend deployment
+# Triggered by pushes to main branch or manual builds
+
+steps:
+  # Step 1: Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/vmkula-backend:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/vmkula-backend:latest'
+      - '.'
+    dir: 'backend'
+
+  # Step 2: Push Docker image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/vmkula-backend:$COMMIT_SHA'
+
+  # Step 3: Push latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/vmkula-backend:latest'
+
+  # Step 4: Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'vmkula-backend'
+      - '--image=gcr.io/$PROJECT_ID/vmkula-backend:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--concurrency=10'
+      - '--min-instances=0'
+      - '--max-instances=5'
+      - '--timeout=300s'
+      - '--set-env-vars=PYTHONUNBUFFERED=1'
+      - '--set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,API_FOOTBALL_KEY=API_FOOTBALL_KEY:latest,FIRESTORE_PROJECT_ID=FIRESTORE_PROJECT_ID:latest'
+      - '--service-account=vmkula-backend-sa@$PROJECT_ID.iam.gserviceaccount.com'
+
+# Store images in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/vmkula-backend:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/vmkula-backend:latest'
+
+# Build timeout (10 minutes)
+timeout: '600s'
+
+# Build options
+options:
+  machineType: 'N1_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY

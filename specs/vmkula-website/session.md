@@ -1,6 +1,6 @@
 # Session Memory
 
-**Last Updated**: 2025-12-25
+**Last Updated**: 2025-12-26
 
 ## 🎯 Active Focus
 
@@ -8,19 +8,19 @@
 - **Phase**: implement
 - **Status**: Active
 - **Active Task**:
-  - **Task ID**: T041
-  - **Description**: Create Dockerfile for backend (Cloud Run deployment)
-  - **Progress**: 39/62 tasks complete (63%)
+  - **Task ID**: T042
+  - **Description**: Create Cloud Run deployment configuration (cloudbuild.yaml, service.yaml)
+  - **Progress**: 40/62 tasks complete (65%)
 
 ## 📝 Recent Session Context
 
 ### Session History (Last 5)
 
-1. **2025-12-26** - Implement Phase 4 BATCH COMPLETE: Completed T038-T040 (3 tasks). Backend error handling with custom exceptions + logging, frontend LoadingSpinner + ErrorBoundary + ConnectionStatus components, Firestore caching with SWR pattern + real-time listeners. Phase 4 complete! 39/62 tasks complete (63%).
-2. **2025-12-25** - Implement Phase 4: Completed T036. Created backend integration test suite (418 lines) with 7 comprehensive tests: full pipeline, Firestore diff check, API rate limiting, Gemini fallback, schema validation, cold start, deterministic tiebreaker. All 7/7 tests passing. 36/62 tasks complete (58%).
-3. **2025-12-25** - Implement Phase 3 BATCH COMPLETE: Completed T032-T035 (4 tasks). Home page with tabs (290 lines), groups page with filtering (229 lines), matches page with search (255 lines), bracket page with zoom (286 lines). Phase 3 complete! 34/62 tasks complete (55%).
-4. **2025-12-25** - Implement Phase 3: Completed T026. Implemented FastAPI main.py (329 lines) with complete backend integration pipeline: db_manager → fifa_engine → data_aggregator → ai_agent → firestore_publisher. POST /api/update-predictions and GET /health endpoints operational. 29/62 tasks complete (47%).
-5. **2025-12-25 21:00** - Phase 3 Core Implementation: Completed T024-T029 (6 tasks). AI agent (5/5 tests ✅), Firestore publisher (4/4 tests ✅), frontend types (complete), Firestore client (4/4 tests ✅), GroupCard component (4/5 tests - 1 test has design flaw). 28/62 tasks complete (45%).
+1. **2025-12-26** - Implement Phase 5: Completed T041. Created backend Dockerfile (39 lines) for Cloud Run: Python 3.11-slim, optimized layer caching, cache directory, non-root user, health check. Ready for deployment. 40/62 tasks complete (65%).
+2. **2025-12-26** - Implement Phase 4 BATCH COMPLETE: Completed T038-T040 (3 tasks). Backend error handling with custom exceptions + logging, frontend LoadingSpinner + ErrorBoundary + ConnectionStatus components, Firestore caching with SWR pattern + real-time listeners. Phase 4 complete! 39/62 tasks complete (63%).
+3. **2025-12-25** - Implement Phase 4: Completed T036. Created backend integration test suite (418 lines) with 7 comprehensive tests: full pipeline, Firestore diff check, API rate limiting, Gemini fallback, schema validation, cold start, deterministic tiebreaker. All 7/7 tests passing. 36/62 tasks complete (58%).
+4. **2025-12-25** - Implement Phase 3 BATCH COMPLETE: Completed T032-T035 (4 tasks). Home page with tabs (290 lines), groups page with filtering (229 lines), matches page with search (255 lines), bracket page with zoom (286 lines). Phase 3 complete! 34/62 tasks complete (55%).
+5. **2025-12-25** - Implement Phase 3: Completed T026. Implemented FastAPI main.py (329 lines) with complete backend integration pipeline: db_manager → fifa_engine → data_aggregator → ai_agent → firestore_publisher. POST /api/update-predictions and GET /health endpoints operational. 29/62 tasks complete (47%).
 
 
 ### Context Carryover
@@ -97,7 +97,7 @@
 - **Spec**: ✓ Complete
 - **Plan**: ✓ Complete
 - **Tasks**: ✓ Complete
-- **Implementation**: 36/62 tasks complete (58%)
+- **Implementation**: 40/62 tasks complete (65%)
 
 ### Phase Breakdown
 
@@ -129,27 +129,28 @@
   - ✅ T038: Backend error handling (custom exceptions, structured logging, request IDs)
   - ✅ T039: Frontend loading/error states (LoadingSpinner, ErrorBoundary, ConnectionStatus)
   - ✅ T040: Firestore caching optimization (SWR pattern, real-time listeners, 5min TTL)
-- **Phase 5 (Deployment)**: 0/7 tasks complete (0%)
+- **Phase 5 (Deployment)**: 1/7 tasks complete (14%)
+  - ✅ T041: backend/Dockerfile (Cloud Run optimized, cache directory, non-root user)
 - **Phase 6 (Documentation)**: 0/15 tasks complete (0%)
 
 ### Recovery Checkpoints
 
 #### Latest Checkpoint
 
-**CP-040** (2025-12-26 00:01): Phase 4 complete - Integration & Polish (T036-T040)
+**CP-041** (2025-12-26 00:27): Task T041 complete - Backend Dockerfile created
   - **Phase**: implement
-  - **Status**: Complete - All 5 Phase 4 tasks finished
-  - **Artifacts**: Backend integration tests (T036), frontend integration test (T037), error handling (T038), loading/error UI (T039), Firestore caching (T040)
-  - **Dependencies**: All Phase 3 tasks complete
-  - **Next**: Phase 5 - Deployment & Infrastructure (T041-T047)
+  - **Status**: Complete
+  - **Artifacts**: backend/Dockerfile (39 lines, optimized for Cloud Run)
+  - **Dependencies**: T026 complete
+  - **Next**: T042 - Cloud Run deployment configuration
 
 #### Checkpoint History
 
-1. **CP-040** (2025-12-26 00:01): Phase 4 complete - Integration & Polish (T036-T040)
-2. **CP-038** (2025-12-25 23:55): Task T038 complete - Comprehensive error handling and logging
-3. **CP-036** (2025-12-25 21:35): Task T036 complete - Backend integration test suite
-4. **CP-035** (2025-12-25 21:23): Task T035 complete - Bracket page (Phase 3 COMPLETE)
-5. **CP-034** (2025-12-25 21:20): Task T034 complete - Matches page
+1. **CP-041** (2025-12-26 00:27): Task T041 complete - Backend Dockerfile created
+2. **CP-040** (2025-12-26 00:01): Phase 4 complete - Integration & Polish (T036-T040)
+3. **CP-038** (2025-12-25 23:55): Task T038 complete - Comprehensive error handling and logging
+4. **CP-036** (2025-12-25 21:35): Task T036 complete - Backend integration test suite
+5. **CP-035** (2025-12-25 21:23): Task T035 complete - Bracket page (Phase 3 COMPLETE)
 
 ## 🔄 Next Actions
 
