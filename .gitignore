@@ -73,10 +73,11 @@ backend/cache/
 .bifrost/active-workflow
 
 # Service Account Keys (NEVER commit these!)
-SA/
+.config/
 *.json
 !package.json
 !package-lock.json
 !tsconfig.json
 !.vscode/*.json
 !firebase.json
+!firestore.*.json
