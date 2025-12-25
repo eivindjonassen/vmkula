@@ -19,6 +19,207 @@
 **Dependencies**: None
 **Parallel**: Yes [P]
 **Status**: ✅ Complete
+### T002: Configure pytest and test infrastructure
+**File**: `backend/pytest.ini`, `backend/.coveragerc`
+**Description**: Set up pytest configuration for TDD enforcement:
+- Create `pytest.ini` with test discovery patterns (test_*.py)
+- Configure coverage reporting (minimum 80% threshold per spec)
+- Add coverage report formats (terminal + HTML)
+- Set up pytest markers for unit vs integration tests
+- Configure test paths to include tests/ directory
+- Add coverage exclusions for `__init__.py` files
+**Dependencies**: T001
+**Parallel**: No
+**Status**: ✅ Complete
+### T003: Set up Next.js frontend project structure
+**File**: `frontend/package.json`, `frontend/app/layout.tsx`, `frontend/tsconfig.json`
+**Description**: Initialize Next.js 15+ App Router project:
+- Run `npx create-next-app@latest frontend` with TypeScript, Tailwind CSS, App Router
+- Configure `tsconfig.json` with strict type checking
+- Create `app/layout.tsx` with basic HTML structure
+- Create `lib/` directory for utilities and services
+- Create `components/ui/` directory for reusable atoms
+- Install Firebase SDK: `firebase` (Firestore client)
+- Create `.env.local.example` template for environment variables
+- Configure `next.config.js` for Firebase Hosting output
+**Dependencies**: None
+**Parallel**: Yes [P]
+**Status**: ✅ Complete
+### T004: Configure Vitest for frontend testing
+**File**: `frontend/vitest.config.ts`, `frontend/__tests__/setup.ts`
+**Description**: Set up Vitest + React Testing Library:
+- Install vitest, @testing-library/react, @testing-library/jest-dom
+- Create `vitest.config.ts` with React plugin and test environment
+- Create `__tests__/setup.ts` for global test setup
+- Configure path aliases to match tsconfig.json (@/ for app root)
+- Add test scripts to package.json (test, test:ui, test:coverage)
+**Dependencies**: T003
+**Parallel**: No
+**Status**: ✅ Complete
+### T005: Create environment configuration files
+**File**: `backend/src/config.py`, `.env.example`, `.gitignore`
+**Description**: Set up environment variable management:
+- Create `backend/src/config.py` with environment variable loading (API_FOOTBALL_KEY, GEMINI_API_KEY, FIRESTORE_PROJECT_ID)
+- Create `.env.example` template with all required variables documented
+- Update `.gitignore` to exclude `.env`, `backend/cache/`, `*.pyc`, `__pycache__/`
+- Add validation for required environment variables on startup
+- Include default values for optional settings (CACHE_TTL_HOURS=24)
+**Dependencies**: T001
+**Parallel**: Yes [P]
+**Status**: ✅ Complete
+---
+## Phase 2: Tests First (TDD)
+### T006: Create test for db_manager basic operations
+**File**: `backend/tests/test_db_manager.py`
+**Description**: Create failing tests for SQLite database interface:
+- Test `load_all_teams()` returns 48 teams with correct schema (id, name, fifa_code, group_letter)
+- Test `load_all_matches()` returns 104 matches with proper relationships
+- Test `load_group_teams(group_letter)` returns 4 teams for group A
+- Test `load_knockout_matches()` returns 32 matches with stage_id >= 2
+- Test database connection error handling
+- Test query for matches by stage_id
+Expected to FAIL until T017 is implemented
+**Dependencies**: T002
+**Parallel**: Yes [P]
+**Status**: ✅ Complete
+### T007: Create test for FIFA standings calculation
+**File**: `backend/tests/test_fifa_engine.py`
+**Description**: Create failing tests for group standings calculation:
+- Test basic standings: 3 points for win, 1 for draw, 0 for loss
+- Test goal difference calculation (goals_for - goals_against)
+- Test sorting by points, then GD, then goals scored
+- Test Fair Play Points calculation (yellow=-1, 2nd yellow=-3, red=-4)
+- CRITICAL TEST: Tiebreaker with Fair Play Points (see plan.md lines 289-320)
+  - Scenario: Mexico and Poland both have 4 points, +1 GD, 3 GF
+  - Mexico: 1 yellow card = -1 fair play point
+  - Poland: 1 red card = -4 fair play points
+  - Expected: Mexico ranks higher (better fair play)
+- Test deterministic fallback (hash-based tiebreaker) when all criteria equal
+Expected to FAIL until T014 is implemented
+**Dependencies**: T002
+**Parallel**: Yes [P]
+**Status**: ✅ Complete
+### T008: Create test for third-place team ranking
+**File**: `backend/tests/test_fifa_engine.py` (additional tests)
+**Description**: Create failing tests for third-place qualification logic:
+- Test ranking of 12 third-place teams across all groups
+- Test top 8 selection criteria (points, GD, goals, fair play)
+- Test edge case: multiple teams with identical records (use deterministic seed)
+- Test that selected teams have correct rank=3 in their groups
+- Verify returned list has exactly 8 teams sorted by qualification criteria
+Expected to FAIL until T015 is implemented
+**Dependencies**: T007
+**Parallel**: No
+**Status**: ✅ Complete
+### T009: Create test for Round of 32 bracket resolution
+**File**: `backend/tests/test_fifa_engine.py` (additional tests)
+**Description**: Create failing tests for knockout matchup resolution:
+- Test resolving "Winner A vs 3rd Place C/D/E" with actual qualified teams
+- Test mapping table from SQLite (bracket_mappings or match labels)
+- Test that all 32 Round of 32 matches get resolved (no TBD remaining)
+- Test preservation of venue, kickoff time, match_number from SQLite
+- Test handling of placeholder teams (is_placeholder=True)
+Expected to FAIL until T016 is implemented
+**Dependencies**: T008
+**Parallel**: No
+**Status**: ✅ Complete
+### T010: Create test for API-Football data aggregation
+**File**: `backend/tests/test_data_aggregator.py`
+**Description**: Create failing tests for team statistics calculation:
+- Test fetching last 5 fixtures from API-Football (mock response)
+- Test xG average calculation from fixtures with complete data
+- CRITICAL TEST: Handle missing xG data (see plan.md lines 356-380)
+  - Scenario: 5 matches, only 3 have xG data
+  - Expected: avg_xg = (2.4 + 0.8 + 2.2) / 3 = 1.8
+  - Expected: data_completeness = 0.6 (3/5)
+  - Expected: confidence = "medium"
+- Test clean sheets count (matches with goals_against=0)
+- Test form string generation ("W-W-D-L-W" pattern)
+- Test fallback mode when NO xG data available (fallback_mode="traditional_form")
+Expected to FAIL until T017 is implemented
+**Dependencies**: T002
+**Parallel**: Yes [P]
+**Status**: ✅ Complete
+### T011: Create test for API caching logic
+**File**: `backend/tests/test_data_aggregator.py` (additional tests)
+**Description**: Create failing tests for local cache management:
+- CRITICAL TEST: Use cached data if less than 24 hours old (see plan.md lines 595-626)
+- Test cache file naming: `cache/team_stats_{team_id}_{YYYY-MM-DD}.json`
+- Test cache expiration: data older than 24 hours is refetched
+- Test cache directory creation if missing
+- Test JSON serialization/deserialization of TeamStatistics
+- Test cache hit vs cache miss metrics
+Expected to FAIL until T018 is implemented
+**Dependencies**: T010
+**Parallel**: No
+**Status**: ✅ Complete
+### T012: Create test for API rate limiting
+**File**: `backend/tests/test_data_aggregator.py` (additional tests)
+**Description**: Create failing tests for API-Football rate limiting:
+- CRITICAL TEST: Ensure 0.5 second delay between consecutive requests (see plan.md lines 498-554)
+- Test exponential backoff on 429 errors (wait 1s, 2s, 4s)
+- Test retry logic on 5xx errors (max 3 retries)
+- Test failure after max retries exceeded
+- Use mock time.sleep() to avoid slow tests
+Expected to FAIL until T019 is implemented
+**Dependencies**: T010
+**Parallel**: Yes [P]
+**Status**: ✅ Complete
+### T013: Create test for Gemini AI prediction generation
+**File**: `backend/tests/test_ai_agent.py`
+**Description**: Create failing tests for AI prediction service:
+- Test building prompts with aggregated team statistics (not just team names)
+- Test calling Gemini API with structured JSON schema
+- Test parsing markdown-wrapped JSON responses (strip ```json blocks)
+- Test validation of prediction schema (winner, probability, score, reasoning)
+- CRITICAL TEST: Retry strategy (see plan.md lines 634-676)
+  - Max 1 retry on failure (2 total attempts)
+  - After 2 failures, use rule-based fallback
+- Test rule-based prediction fallback using xG differential
+Expected to FAIL until T020 is implemented
+**Dependencies**: T002
+**Parallel**: Yes [P]
+**Status**: ✅ Complete
+### T014: Create test for Firestore publishing
+**File**: `backend/tests/test_firestore_publisher.py`
+**Description**: Create failing tests for Firestore write operations:
+- Test assembling TournamentSnapshot from groups + bracket + AI summary
+- Test publishing to predictions/latest document
+- Test timestamp inclusion (updated_at field)
+- Test schema validation before publishing
+- CRITICAL TEST: History diff check (see plan.md lines 678-724)
+  - Test skipping write if prediction unchanged (winner + reasoning identical)
+  - Test writing new history entry if prediction differs
+  - Test sub-collection path: matches/{match_id}/history/{timestamp}
+Expected to FAIL until T021 is implemented
+**Dependencies**: T002
+**Parallel**: Yes [P]
+**Status**: ✅ Complete
+### T015: Create frontend test for GroupCard component
+**File**: `frontend/__tests__/GroupCard.test.tsx`
+**Description**: Create failing tests for group standings display:
+- Test displaying group standings sorted by rank
+- Test team flag emoji rendering
+- Test points, GD, goals columns display correctly
+- Test highlighting top 2 teams (qualifiers) with visual indicator
+- Test showing 3rd place team with different style (potential qualifier)
+- Test responsive layout (mobile vs desktop)
+Expected to FAIL until T027 is implemented
+**Dependencies**: T004
+**Parallel**: Yes [P]
+**Status**: ✅ Complete
+### T016: Create frontend test for Firestore data fetching
+**File**: `frontend/__tests__/lib/firestore.test.ts`
+**Description**: Create failing tests for Firestore client:
+- Test fetching predictions/latest document
+- Test parsing TournamentSnapshot structure
+- Test error handling when document doesn't exist
+- Test detecting stale data (updated_at older than 2 hours)
+- Test triggering backend refresh when data is stale
+Expected to FAIL until T028 is implemented
+**Dependencies**: T004
+**Parallel**: Yes [P]
+**Status**: ✅ Complete
 ---
 ## Phase 3: Core Implementation
 ### T017: Implement db_manager.py for SQLite operations
@@ -33,6 +234,56 @@
 - Use context manager for connection lifecycle
 Run pytest to verify T006 passes
 **Dependencies**: T006
+**Parallel**: No
+**Status**: ✅ Complete
+### T018: Implement FIFA standings calculation in fifa_engine.py
+**File**: `backend/src/fifa_engine.py`
+**Description**: Implement group standings logic to pass T007 tests:
+- Create FifaEngine class with `calculate_standings(results)` method
+- Calculate points: won*3 + draw*1
+- Calculate goal_difference: goals_for - goals_against
+- Implement Fair Play Points from cards data (yellow=-1, 2nd yellow=-3, red=-4)
+- **CRITICAL: Implement resolve_tie_breaker with deterministic final fallback**:
+  - Tiebreaker sequence: Points > GD > Goals > H2H > Fair Play
+  - **For the final draw of lots, implement a deterministic random seed based on team names (e.g., hash(TeamA + TeamB))**
+  - **Do NOT use standard random functions (random.choice(), random.random()) that change on every run**
+  - This prevents the "Flickering Website" problem where rankings change randomly on each backend run
+- Implement tiebreaker sorting (see plan.md lines 469-492):
+  1. Points (descending)
+  2. Goal Difference (descending)
+  3. Goals Scored (descending)
+  4. Fair Play Points (ascending - less negative is better)
+  5. Deterministic seed: hash(team_name) for final fallback
+- Return Dict[str, List[GroupStanding]] with groups A-L
+Run pytest to verify T007 passes
+**Dependencies**: T007, T017
+**Parallel**: No
+**Status**: ✅ Complete
+### T019: Implement third-place team ranking in fifa_engine.py
+**File**: `backend/src/fifa_engine.py` (additional method)
+**Description**: Implement third-place qualification logic to pass T008 tests:
+- Add method `rank_third_place_teams(standings)` to FifaEngine
+- Extract all 3rd-place teams from 12 groups
+- Sort by same criteria as group standings (points, GD, goals, fair play, hash)
+- Select top 8 teams
+- Return List[GroupStanding] with selected third-place qualifiers
+Run pytest to verify T008 passes
+**Dependencies**: T008, T018
+**Parallel**: No
+**Status**: ✅ Complete
+### T020: Implement Round of 32 bracket resolution in fifa_engine.py
+**File**: `backend/src/fifa_engine.py` (additional method)
+**Description**: Implement knockout matchup resolution to pass T009 tests:
+- Add method `resolve_knockout_bracket(standings, third_place_teams, knockout_matches)`
+- Load bracket mapping table from SQLite (match labels like "Winner A vs 3rd Place C/D/E")
+- Replace placeholders with actual qualified team names:
+  - "Winner A" → standings['A'][0]
+  - "3rd Place C/D/E" → first team in third_place list from groups C, D, or E
+- Update match records with resolved home_team_id, away_team_id
+- Preserve venue, kickoff_at, match_number from SQLite
+- Return List[BracketMatch] with resolved matchups
+Run pytest to verify T009 passes
+**Dependencies**: T009, T019
 **Parallel**: No
 **Status**: ✅ Complete
 ### T021: Implement team statistics aggregation in data_aggregator.py
