@@ -18,7 +18,7 @@
 - Move `worldcup2026.db` from root to `backend/` directory
 **Dependencies**: None
 **Parallel**: Yes [P]
-**Status**: 
+**Status**: ✅ Complete 
 ### T002: Configure pytest and test infrastructure
 **File**: `backend/pytest.ini`, `backend/.coveragerc`
 **Description**: Set up pytest configuration for TDD enforcement:
@@ -30,7 +30,7 @@
 - Add coverage exclusions for `__init__.py` files
 **Dependencies**: T001
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete 
 ### T003: Set up Next.js frontend project structure
 **File**: `frontend/package.json`, `frontend/app/layout.tsx`, `frontend/tsconfig.json`
 **Description**: Initialize Next.js 15+ App Router project:
@@ -44,7 +44,7 @@
 - Configure `next.config.js` for Firebase Hosting output
 **Dependencies**: None
 **Parallel**: Yes [P]
-**Status**: 
+**Status**: ✅ Complete 
 ### T004: Configure Vitest for frontend testing
 **File**: `frontend/vitest.config.ts`, `frontend/__tests__/setup.ts`
 **Description**: Set up Vitest + React Testing Library:
@@ -55,18 +55,18 @@
 - Add test scripts to package.json (test, test:ui, test:coverage)
 **Dependencies**: T003
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete 
 ### T005: Create environment configuration files
-**File**: `backend/src/config.py`, `.env.example`, `.gitignore`
+**File**: `backend/src/config.py`, `ENV_SETUP.md`, `.gitignore`
 **Description**: Set up environment variable management:
 - Create `backend/src/config.py` with environment variable loading (API_FOOTBALL_KEY, GEMINI_API_KEY, FIRESTORE_PROJECT_ID)
-- Create `.env.example` template with all required variables documented
+- Create `ENV_SETUP.md` documentation with .env template (Firebase project: vmkula)
 - Update `.gitignore` to exclude `.env`, `backend/cache/`, `*.pyc`, `__pycache__/`
 - Add validation for required environment variables on startup
 - Include default values for optional settings (CACHE_TTL_HOURS=24)
 **Dependencies**: T001
 **Parallel**: Yes [P]
-**Status**: 
+**Status**: ✅ Complete 
 ---
 ## Phase 2: Tests First (TDD)
 ### T006: Create test for db_manager basic operations

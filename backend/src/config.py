@@ -5,13 +5,17 @@ from typing import Optional
 
 
 class Config:
-    """Application configuration loaded from environment variables"""
+    """Application configuration loaded from environment variables
+
+    Load configuration from .env file in project root.
+    See .env for required variables and Firebase project setup.
+    """
 
     # Required API keys
     API_FOOTBALL_KEY: str
     GEMINI_API_KEY: str
 
-    # Firebase/Firestore configuration
+    # Firebase/Firestore configuration (project: vmkula)
     FIRESTORE_PROJECT_ID: str
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str]
 
