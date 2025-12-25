@@ -21,6 +21,9 @@ from src.db_manager import DBManager
 from src.fifa_engine import FifaEngine
 from src.firestore_publisher import FirestorePublisher
 
+# Database path (relative to backend directory)
+DB_PATH = Path(__file__).parent.parent / "worldcup2026.db"
+
 # Initialize FastAPI application
 app = FastAPI(
     title="World Cup 2026 Predictions API",
@@ -53,7 +56,7 @@ def health_check() -> Dict[str, Any]:
     """
     try:
         # Check database connection
-        db = DBManager("backend/worldcup2026.db")
+        db = DBManager(str(DB_PATH))
         teams = db.load_all_teams()
         db_status = "ok" if len(teams) > 0 else "error"
 
