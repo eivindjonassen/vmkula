@@ -19,21 +19,6 @@
 **Dependencies**: None
 **Parallel**: Yes [P]
 **Status**: ✅ Complete
-### T013: Create test for Gemini AI prediction generation
-**File**: `backend/tests/test_ai_agent.py`
-**Description**: Create failing tests for AI prediction service:
-- Test building prompts with aggregated team statistics (not just team names)
-- Test calling Gemini API with structured JSON schema
-- Test parsing markdown-wrapped JSON responses (strip ```json blocks)
-- Test validation of prediction schema (winner, probability, score, reasoning)
-- CRITICAL TEST: Retry strategy (see plan.md lines 634-676)
-  - Max 1 retry on failure (2 total attempts)
-  - After 2 failures, use rule-based fallback
-- Test rule-based prediction fallback using xG differential
-Expected to FAIL until T020 is implemented
-**Dependencies**: T002
-**Parallel**: Yes [P]
-**Status**: 
 ### T014: Create test for Firestore publishing
 **File**: `backend/tests/test_firestore_publisher.py`
 **Description**: Create failing tests for Firestore write operations:
