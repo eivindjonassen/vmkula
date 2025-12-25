@@ -19,21 +19,6 @@
 **Dependencies**: None
 **Parallel**: Yes [P]
 **Status**: ✅ Complete
-### T014: Create test for Firestore publishing
-**File**: `backend/tests/test_firestore_publisher.py`
-**Description**: Create failing tests for Firestore write operations:
-- Test assembling TournamentSnapshot from groups + bracket + AI summary
-- Test publishing to predictions/latest document
-- Test timestamp inclusion (updated_at field)
-- Test schema validation before publishing
-- CRITICAL TEST: History diff check (see plan.md lines 678-724)
-  - Test skipping write if prediction unchanged (winner + reasoning identical)
-  - Test writing new history entry if prediction differs
-  - Test sub-collection path: matches/{match_id}/history/{timestamp}
-Expected to FAIL until T021 is implemented
-**Dependencies**: T002
-**Parallel**: Yes [P]
-**Status**: 
 ### T015: Create frontend test for GroupCard component
 **File**: `frontend/__tests__/GroupCard.test.tsx`
 **Description**: Create failing tests for group standings display:
