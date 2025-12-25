@@ -19,19 +19,6 @@
 **Dependencies**: None
 **Parallel**: Yes [P]
 **Status**: ✅ Complete
-### T015: Create frontend test for GroupCard component
-**File**: `frontend/__tests__/GroupCard.test.tsx`
-**Description**: Create failing tests for group standings display:
-- Test displaying group standings sorted by rank
-- Test team flag emoji rendering
-- Test points, GD, goals columns display correctly
-- Test highlighting top 2 teams (qualifiers) with visual indicator
-- Test showing 3rd place team with different style (potential qualifier)
-- Test responsive layout (mobile vs desktop)
-Expected to FAIL until T027 is implemented
-**Dependencies**: T004
-**Parallel**: Yes [P]
-**Status**: 
 ### T016: Create frontend test for Firestore data fetching
 **File**: `frontend/__tests__/lib/firestore.test.ts`
 **Description**: Create failing tests for Firestore client:
