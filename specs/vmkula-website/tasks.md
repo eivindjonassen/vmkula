@@ -19,18 +19,6 @@
 **Dependencies**: None
 **Parallel**: Yes [P]
 **Status**: ✅ Complete
-### T016: Create frontend test for Firestore data fetching
-**File**: `frontend/__tests__/lib/firestore.test.ts`
-**Description**: Create failing tests for Firestore client:
-- Test fetching predictions/latest document
-- Test parsing TournamentSnapshot structure
-- Test error handling when document doesn't exist
-- Test detecting stale data (updated_at older than 2 hours)
-- Test triggering backend refresh when data is stale
-Expected to FAIL until T028 is implemented
-**Dependencies**: T004
-**Parallel**: Yes [P]
-**Status**: 
 ---
 ## Phase 3: Core Implementation
 ### T017: Implement db_manager.py for SQLite operations
