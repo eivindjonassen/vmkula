@@ -8,8 +8,8 @@
 - **Phase**: implement
 - **Status**: Active
 - **Active Task**:
-  - **Task ID**: T031
-  - **Description**: Implement BracketView component for knockout bracket visualization
+  - **Task ID**: T032
+  - **Description**: Implement app home page with tabs (Groups | Matches | Bracket)
   - **Progress**: 30/62 tasks complete (48%)
 
 ## 📝 Recent Session Context

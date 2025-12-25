@@ -474,7 +474,7 @@ Run vitest to verify T015 passes
 - Add "Refresh Predictions" button to manually trigger backend update
 **Dependencies**: T028
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete 
 ### T033: Create groups page
 **File**: `frontend/app/groups/page.tsx`
 **Description**: Implement group stage view:
