@@ -486,7 +486,7 @@ Run vitest to verify T015 passes
 - Display loading skeleton while fetching data
 **Dependencies**: T028, T029
 **Parallel**: Yes [P]
-**Status**: 
+**Status**: ✅ Complete 
 ### T034: Create matches page
 **File**: `frontend/app/matches/page.tsx`
 **Description**: Implement match schedule view:
