@@ -256,7 +256,7 @@ export default function Home() {
                   <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <span>⚽</span> {t('groupStandings')}
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                     {Object.entries(snapshot.groups)
                       .sort(([a], [b]) => a.localeCompare(b))
                       .map(([letter, group], index) => (
