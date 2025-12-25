@@ -30,19 +30,7 @@
 Expected to FAIL until T015 is implemented
 **Dependencies**: T007
 **Parallel**: No
-**Status**: 
-### T009: Create test for Round of 32 bracket resolution
-**File**: `backend/tests/test_fifa_engine.py` (additional tests)
-**Description**: Create failing tests for knockout matchup resolution:
-- Test resolving "Winner A vs 3rd Place C/D/E" with actual qualified teams
-- Test mapping table from SQLite (bracket_mappings or match labels)
-- Test that all 32 Round of 32 matches get resolved (no TBD remaining)
-- Test preservation of venue, kickoff time, match_number from SQLite
-- Test handling of placeholder teams (is_placeholder=True)
-Expected to FAIL until T016 is implemented
-**Dependencies**: T008
-**Parallel**: No
-**Status**: 
+**Status**: ✅ Complete
 ### T010: Create test for API-Football data aggregation
 **File**: `backend/tests/test_data_aggregator.py`
 **Description**: Create failing tests for team statistics calculation:

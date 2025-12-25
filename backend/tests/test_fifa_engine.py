@@ -187,3 +187,102 @@ def test_deterministic_fallback():
     standings2 = engine.calculate_standings("A", results, cards=cards)
 
     assert [s.team_name for s in standings1] == [s.team_name for s in standings2]
+
+
+def test_rank_third_place_teams():
+    """
+    Test ranking of 12 third-place teams across all groups.
+    Top 8 selection criteria: points, GD, goals, fair play.
+    """
+    engine = FifaEngine()
+
+    # Mock standings from 12 groups (A-L)
+    # Each list contains the 3rd place team from that group
+    mock_standings = {}
+
+    # 12 teams with various stats
+    # We'll create a helper to generate GroupStanding-like objects if needed,
+    # but for now we'll assume FifaEngine.rank_third_place_teams takes a dict of standings
+
+    # Creating 12 teams, we want to select top 8.
+    # Teams 1-8: Stronger
+    # Teams 9-12: Weaker
+
+    from dataclasses import dataclass
+
+    @dataclass
+    class MockStanding:
+        team_name: str
+        group_letter: str
+        rank: int
+        points: int
+        goal_difference: int
+        goals_for: int
+        fair_play_points: int
+
+    third_place_candidates = [
+        MockStanding("Team A3", "A", 3, 4, 1, 3, 0),  # 1
+        MockStanding("Team B3", "B", 3, 4, 1, 2, 0),  # 2
+        MockStanding("Team C3", "C", 3, 4, 0, 3, 0),  # 3
+        MockStanding("Team D3", "D", 3, 3, 2, 4, 0),  # 4
+        MockStanding("Team E3", "E", 3, 3, 1, 3, 0),  # 5
+        MockStanding("Team F3", "F", 3, 3, 1, 2, 0),  # 6
+        MockStanding("Team G3", "G", 3, 3, 1, 2, -1),  # 7 (fair play)
+        MockStanding("Team H3", "H", 3, 3, 1, 2, -4),  # 8 (fair play)
+        MockStanding("Team I3", "I", 3, 2, 0, 2, 0),  # Out
+        MockStanding("Team J3", "J", 3, 1, -1, 1, 0),  # Out
+        MockStanding("Team K3", "K", 3, 1, -2, 0, 0),  # Out
+        MockStanding("Team L3", "L", 3, 0, -3, 0, 0),  # Out
+    ]
+
+    # Constructing the full standings dict expected by the method
+    # Actually, the method might just need the list of 3rd place teams or the full standings
+    # Task says: rank_third_place_teams(standings)
+
+    # If it takes the full standings dict:
+    full_standings = {
+        chr(65 + i): [None, None, third_place_candidates[i]] for i in range(12)
+    }
+
+    qualified = engine.rank_third_place_teams(full_standings)
+
+    assert len(qualified) == 8
+    assert qualified[0].team_name == "Team A3"
+    assert qualified[7].team_name == "Team H3"
+    assert "Team I3" not in [q.team_name for q in qualified]
+
+
+def test_third_place_deterministic_fallback():
+    """Test edge case: multiple teams with identical records (use deterministic seed)."""
+    engine = FifaEngine()
+
+    from dataclasses import dataclass
+
+    @dataclass
+    class MockStanding:
+        team_name: str
+        group_letter: str
+        rank: int
+        points: int
+        goal_difference: int
+        goals_for: int
+        fair_play_points: int
+
+    # Teams with identical stats
+    third_place_candidates = [
+        MockStanding("Team X", "A", 3, 3, 0, 2, 0),
+        MockStanding("Team Y", "B", 3, 3, 0, 2, 0),
+    ]
+
+    full_standings = {
+        "A": [None, None, third_place_candidates[0]],
+        "B": [None, None, third_place_candidates[1]],
+    }
+
+    # We only want top 1 for this test to check deterministic selection
+    # But the method returns top 8. We'll check if the order is consistent.
+
+    qualified1 = engine.rank_third_place_teams(full_standings)
+    qualified2 = engine.rank_third_place_teams(full_standings)
+
+    assert [q.team_name for q in qualified1] == [q.team_name for q in qualified2]
