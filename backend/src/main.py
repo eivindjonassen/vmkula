@@ -280,6 +280,19 @@ def update_predictions() -> Dict[str, Any]:
             resolved_bracket = []
 
         # Step 7: Build tournament snapshot
+        # Extract favorites (top teams by points across all groups)
+        all_teams_with_points = []
+        for group_letter, standings in all_standings.items():
+            for standing in standings:
+                all_teams_with_points.append((standing.team_name, standing.points))
+
+        # Sort by points and take top 5 as favorites
+        all_teams_with_points.sort(key=lambda x: x[1], reverse=True)
+        favorites = [team for team, points in all_teams_with_points[:5]]
+
+        # Dark horses: 3rd place teams with good stats (could make a run)
+        dark_horses = [standing.team_name for standing in third_place_qualifiers[:3]]
+
         snapshot = {
             "groups": {
                 group: [
@@ -312,6 +325,8 @@ def update_predictions() -> Dict[str, Any]:
             ],
             "predictions": predictions,
             "ai_summary": f"Generated {len(predictions)} predictions for World Cup 2026",
+            "favorites": favorites,
+            "darkHorses": dark_horses,
             "errors": errors if errors else None,
         }
 
