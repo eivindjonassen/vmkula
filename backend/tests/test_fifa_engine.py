@@ -352,3 +352,34 @@ def test_resolve_knockout_bracket():
     m50 = next(m for m in resolved if m.match_number == 50)
     assert m50.home_team_name == "Team B1"
     assert m50.away_team_name == "Team A2"
+
+
+def test_away_team_win():
+    """Test calculate_standings with away team winning."""
+    engine = FifaEngine()
+    results = [
+        {
+            "home_team": "Team A",
+            "away_team": "Team B",
+            "home_score": 0,
+            "away_score": 2,
+        },
+    ]
+    standings = engine.calculate_standings("A", results)
+    teams = {s.team_name: s for s in standings}
+    assert teams["Team B"].points == 3
+    assert teams["Team A"].points == 0
+
+
+def test_resolve_label_fallbacks():
+    """Test _resolve_label with fallback cases."""
+    engine = FifaEngine()
+    # 1. 3rd Place none qualified
+    label = "3rd Place C/D/E"
+    resolved = engine._resolve_label(label, {}, {})
+    assert resolved == label
+
+    # 2. Unknown label
+    label = "Final Match"
+    resolved = engine._resolve_label(label, {}, {})
+    assert resolved == label

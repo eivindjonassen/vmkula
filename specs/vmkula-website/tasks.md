@@ -35,21 +35,6 @@ Run pytest to verify T006 passes
 **Dependencies**: T006
 **Parallel**: No
 **Status**: ✅ Complete
-### T020: Implement Round of 32 bracket resolution in fifa_engine.py
-**File**: `backend/src/fifa_engine.py` (additional method)
-**Description**: Implement knockout matchup resolution to pass T009 tests:
-- Add method `resolve_knockout_bracket(standings, third_place_teams, knockout_matches)`
-- Load bracket mapping table from SQLite (match labels like "Winner A vs 3rd Place C/D/E")
-- Replace placeholders with actual qualified team names:
-  - "Winner A" → standings['A'][0]
-  - "3rd Place C/D/E" → first team in third_place list from groups C, D, or E
-- Update match records with resolved home_team_id, away_team_id
-- Preserve venue, kickoff_at, match_number from SQLite
-- Return List[BracketMatch] with resolved matchups
-Run pytest to verify T009 passes
-**Dependencies**: T009, T019
-**Parallel**: No
-**Status**: 
 ### T021: Implement team statistics aggregation in data_aggregator.py
 **File**: `backend/src/data_aggregator.py`
 **Description**: Implement API-Football client to pass T010 tests:
