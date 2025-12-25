@@ -2,7 +2,14 @@
 
 import os
 import sys
+from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
+
+# Load .env file from project root (parent of backend/)
+project_root = Path(__file__).parent.parent.parent
+env_path = project_root / ".env"
+load_dotenv(dotenv_path=env_path)
 
 
 class Config:
