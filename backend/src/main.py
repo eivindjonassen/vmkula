@@ -138,8 +138,21 @@ def update_predictions() -> Dict[str, Any]:
         all_standings: Dict[str, Any] = {}
         for group_letter, group_teams in groups.items():
             try:
-                # Empty results = all teams with 0 points
-                standings = engine.calculate_standings(group_letter, [])
+                # Create initial results with all teams (0-0 draws to initialize)
+                # This ensures all teams appear in standings with 0 points
+                initial_results = []
+                for i in range(0, len(group_teams), 2):
+                    if i + 1 < len(group_teams):
+                        initial_results.append(
+                            {
+                                "home_team": group_teams[i].name,
+                                "away_team": group_teams[i + 1].name,
+                                "home_score": 0,
+                                "away_score": 0,
+                            }
+                        )
+
+                standings = engine.calculate_standings(group_letter, initial_results)
                 all_standings[group_letter] = standings
             except Exception as e:
                 errors.append(
