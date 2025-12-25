@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime
 from unittest.mock import MagicMock
 from src.data_aggregator import DataAggregator
 
