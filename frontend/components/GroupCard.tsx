@@ -52,10 +52,10 @@ export default function GroupCard({ group }: GroupCardProps) {
               <th className="px-2 py-3 text-center text-xs font-bold text-emerald-800 uppercase tracking-wider" title={t('lostFull')}>
                 {t('lost')}
               </th>
-              <th className="px-2 py-3 text-center text-xs font-bold text-emerald-800 uppercase tracking-wider" title={t('goalsForFull')}>
+              <th className="hidden sm:table-cell px-2 py-3 text-center text-xs font-bold text-emerald-800 uppercase tracking-wider" title={t('goalsForFull')}>
                 {t('goalsFor')}
               </th>
-              <th className="px-2 py-3 text-center text-xs font-bold text-emerald-800 uppercase tracking-wider" title={t('goalsAgainstFull')}>
+              <th className="hidden sm:table-cell px-2 py-3 text-center text-xs font-bold text-emerald-800 uppercase tracking-wider" title={t('goalsAgainstFull')}>
                 {t('goalsAgainst')}
               </th>
               <th className="px-2 py-3 text-center text-xs font-bold text-emerald-800 uppercase tracking-wider" title={t('goalDifferenceFull')}>
@@ -110,10 +110,10 @@ export default function GroupCard({ group }: GroupCardProps) {
                   <td className="px-2 py-3 text-center text-gray-700">
                     {team.lost}
                   </td>
-                  <td className="px-2 py-3 text-center text-gray-700">
+                  <td className="hidden sm:table-cell px-2 py-3 text-center text-gray-700">
                     {team.goalsFor}
                   </td>
-                  <td className="px-2 py-3 text-center text-gray-700">
+                  <td className="hidden sm:table-cell px-2 py-3 text-center text-gray-700">
                     {team.goalsAgainst}
                   </td>
                   <td className="px-2 py-3 text-center text-gray-700 font-medium">

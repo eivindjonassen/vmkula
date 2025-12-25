@@ -124,7 +124,7 @@ export default function GroupsPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Loading State */}
         {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[...Array(12)].map((_, i) => (
               <div key={i} className="bg-white rounded-lg shadow-md border border-gray-200 p-6 animate-pulse">
                 <div className="h-6 bg-slate-200 rounded mb-4"></div>
@@ -156,7 +156,7 @@ export default function GroupsPage() {
         {/* Groups Grid */}
         {snapshot && !loading && (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
               {filteredGroups.map(([letter, group]) => (
                 <GroupCard key={letter} group={group} />
               ))}
