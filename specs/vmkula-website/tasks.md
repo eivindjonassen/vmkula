@@ -78,10 +78,10 @@
 - Test `load_knockout_matches()` returns 32 matches with stage_id >= 2
 - Test database connection error handling
 - Test query for matches by stage_id
-Expected to FAIL until T013 is implemented
+Expected to FAIL until T017 is implemented
 **Dependencies**: T002
 **Parallel**: Yes [P]
-**Status**: 
+**Status**: ✅ Complete 
 ### T007: Create test for FIFA standings calculation
 **File**: `backend/tests/test_fifa_engine.py`
 **Description**: Create failing tests for group standings calculation:
