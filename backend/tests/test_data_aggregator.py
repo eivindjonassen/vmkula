@@ -160,3 +160,69 @@ def test_save_to_cache(tmp_path):
     today = datetime.now().strftime("%Y-%m-%d")
     cache_file = cache_dir / f"team_stats_{team_id}_{today}.json"
     assert cache_file.exists()
+
+
+def test_rate_limiting(monkeypatch):
+    """CRITICAL TEST: Ensure 0.5 second delay between consecutive requests."""
+    import time
+
+    mock_sleep = MagicMock()
+    monkeypatch.setattr(time, "sleep", mock_sleep)
+
+    aggregator = DataAggregator()
+    # Mocking the actual API call
+    aggregator.fetch_from_api = MagicMock(return_value={"status": "ok"})
+
+    # Call twice
+    aggregator.fetch_team_stats(1)
+    aggregator.fetch_team_stats(2)
+
+    # Check if sleep was called with 0.5
+    mock_sleep.assert_any_call(0.5)
+
+
+def test_retry_exponential_backoff(monkeypatch):
+    """Test exponential backoff on 429 errors (wait 1s, 2s, 4s)."""
+    import time
+
+    mock_sleep = MagicMock()
+    monkeypatch.setattr(time, "sleep", mock_sleep)
+
+    aggregator = DataAggregator()
+
+    # Mock API to fail with 429 twice, then succeed
+    mock_api = MagicMock(
+        side_effect=[
+            Exception("429 Rate Limit"),
+            Exception("429 Rate Limit"),
+            {"status": "ok"},
+        ]
+    )
+    aggregator.fetch_from_api = mock_api
+
+    result = aggregator.fetch_team_stats(1)
+
+    assert result == {"status": "ok"}
+    assert mock_api.call_count == 3
+    # Wait 1s, then 2s
+    mock_sleep.assert_any_call(1)
+    mock_sleep.assert_any_call(2)
+
+
+def test_max_retries_failure(monkeypatch):
+    """Test failure after max retries exceeded."""
+    import time
+
+    mock_sleep = MagicMock()
+    monkeypatch.setattr(time, "sleep", mock_sleep)
+
+    aggregator = DataAggregator()
+
+    # Mock API to always fail
+    mock_api = MagicMock(side_effect=Exception("500 Server Error"))
+    aggregator.fetch_from_api = mock_api
+
+    with pytest.raises(Exception, match="Max retries exceeded"):
+        aggregator.fetch_team_stats(1)
+
+    assert mock_api.call_count == 4  # Initial + 3 retries

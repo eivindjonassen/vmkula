@@ -19,18 +19,6 @@
 **Dependencies**: None
 **Parallel**: Yes [P]
 **Status**: ✅ Complete
-### T012: Create test for API rate limiting
-**File**: `backend/tests/test_data_aggregator.py` (additional tests)
-**Description**: Create failing tests for API-Football rate limiting:
-- CRITICAL TEST: Ensure 0.5 second delay between consecutive requests (see plan.md lines 498-554)
-- Test exponential backoff on 429 errors (wait 1s, 2s, 4s)
-- Test retry logic on 5xx errors (max 3 retries)
-- Test failure after max retries exceeded
-- Use mock time.sleep() to avoid slow tests
-Expected to FAIL until T019 is implemented
-**Dependencies**: T010
-**Parallel**: Yes [P]
-**Status**: 
 ### T013: Create test for Gemini AI prediction generation
 **File**: `backend/tests/test_ai_agent.py`
 **Description**: Create failing tests for AI prediction service:
