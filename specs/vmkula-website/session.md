@@ -8,20 +8,19 @@
 - **Phase**: implement
 - **Status**: Active
 - **Active Task**:
-  - **Task ID**: T030
-  - **Description**: Implement MatchCard component for match prediction display
-  - **Progress**: 29/62 tasks complete (47%)
+  - **Task ID**: T031
+  - **Description**: Implement BracketView component for knockout bracket visualization
+  - **Progress**: 30/62 tasks complete (48%)
 
 ## 📝 Recent Session Context
 
 ### Session History (Last 5)
 
-1. **2025-12-25** - Implement Phase 3: Completed T026. Implemented FastAPI main.py (329 lines) with complete backend integration pipeline: db_manager → fifa_engine → data_aggregator → ai_agent → firestore_publisher. POST /api/update-predictions and GET /health endpoints operational. 29/62 tasks complete (47%).
-2. **2025-12-25 21:00** - Phase 3 Core Implementation: Completed T024-T029 (6 tasks). AI agent (5/5 tests ✅), Firestore publisher (4/4 tests ✅), frontend types (complete), Firestore client (4/4 tests ✅), GroupCard component (4/5 tests - 1 test has design flaw). 28/62 tasks complete (45%).
-2. **2025-12-25 20:40** - Implement Phase 3 Batch: Completed T023. Verified rate limiting (0.5s delay, exponential backoff) already in data_aggregator.py from T021. T012 tests passing. 23/62 tasks complete (37%).
-3. **2025-12-25** - Implement Phase 3: Completed T022. Verified cache management methods (get_cached_stats, save_to_cache) already implemented in T021. T011 tests passing. No additional code needed. 22/62 tasks complete (35%).
-4. **2025-12-25** - Implement Phase 3: Completed T021. Implemented `data_aggregator.py` with team statistics computation, missing xG handling, local caching (24h TTL), and rate limiting (0.5s delay). All 10 tests passing. 21/62 tasks complete (34%).
-5. **2025-12-25** - Task Status Fix: Restored missing tasks T018-T020 from commit 7af661fe. Updated all completed tasks (T001-T020) to show ✅ Complete status. Phase 1 (100%) and Phase 2 (100%) fully complete. 20/62 tasks complete (32%).
+1. **2025-12-25** - Implement Phase 3: Completed T030. Implemented MatchCard component (211 lines) with match prediction display, win probability bar, expandable reasoning, confidence color coding, and TBD handling. 30/62 tasks complete (48%).
+2. **2025-12-25** - Implement Phase 3: Completed T026. Implemented FastAPI main.py (329 lines) with complete backend integration pipeline: db_manager → fifa_engine → data_aggregator → ai_agent → firestore_publisher. POST /api/update-predictions and GET /health endpoints operational. 29/62 tasks complete (47%).
+3. **2025-12-25 21:00** - Phase 3 Core Implementation: Completed T024-T029 (6 tasks). AI agent (5/5 tests ✅), Firestore publisher (4/4 tests ✅), frontend types (complete), Firestore client (4/4 tests ✅), GroupCard component (4/5 tests - 1 test has design flaw). 28/62 tasks complete (45%).
+4. **2025-12-25 20:40** - Implement Phase 3 Batch: Completed T023. Verified rate limiting (0.5s delay, exponential backoff) already in data_aggregator.py from T021. T012 tests passing. 23/62 tasks complete (37%).
+5. **2025-12-25** - Implement Phase 3: Completed T022. Verified cache management methods (get_cached_stats, save_to_cache) already implemented in T021. T011 tests passing. No additional code needed. 22/62 tasks complete (35%).
 
 
 ### Context Carryover
@@ -104,7 +103,7 @@
 
 - **Phase 1 (Setup)**: 5/5 tasks complete (100%) ✅
 - **Phase 2 (Tests)**: 11/11 tasks complete (100%) ✅
-- **Phase 3 (Implementation)**: 13/19 tasks complete (68%)
+- **Phase 3 (Implementation)**: 14/19 tasks complete (74%)
   - ✅ T017: db_manager.py (SQLite interface)
   - ✅ T018: fifa_engine.py (standings calculation)
   - ✅ T019: Fair play points logic
@@ -118,7 +117,8 @@
   - ✅ T028: frontend/lib/firestore.ts (Firestore client) - 4/4 tests passing
   - ⚠️ T029: frontend/components/GroupCard.tsx (4/5 tests, 1 test design flaw)
   - ✅ T026: backend/src/main.py (FastAPI integration) - complete backend pipeline
-  - ⏳ T030-T035: Additional frontend components (pending)
+  - ✅ T030: frontend/components/MatchCard.tsx (match prediction display)
+  - ⏳ T031-T035: Additional frontend components (pending)
 - **Phase 4 (Integration)**: 0/5 tasks complete (0%)
 - **Phase 5 (Deployment)**: 0/7 tasks complete (0%)
 - **Phase 6 (Documentation)**: 0/15 tasks complete (0%)
@@ -127,20 +127,20 @@
 
 #### Latest Checkpoint
 
-**CP-026** (2025-12-25 21:02): Task T026 complete - FastAPI main.py backend integration
+**CP-030** (2025-12-25 21:07): Task T030 complete - MatchCard component
   - **Phase**: implement
   - **Status**: Complete
-  - **Artifacts**: backend/src/main.py (329 lines) with POST /api/update-predictions and GET /health
-  - **Dependencies**: All backend modules (T017-T025) integrated successfully
-  - **Next**: Frontend components T030-T035 to complete Phase 3
+  - **Artifacts**: frontend/components/MatchCard.tsx (211 lines) with match prediction display
+  - **Dependencies**: T027 (types.ts) complete
+  - **Next**: T031-T035 frontend components to complete Phase 3
 
 #### Checkpoint History
 
-1. **CP-029** (2025-12-25 21:00): Tasks T024-T029 complete - Phase 3 core implementation (6 tasks)
-2. **CP-023** (2025-12-25 20:40): Task T023 complete - rate limiting verified (Phase 3 batch)
-3. **CP-022** (2025-12-25 20:36): Task T022 complete - cache methods verified
-4. **CP-021** (2025-12-25 20:32): Task T021 complete - data_aggregator.py implemented
-5. **CP-020** (2025-12-25 21:15): Task status audit complete - all T001-T020 marked complete
+1. **CP-026** (2025-12-25 21:02): Task T026 complete - FastAPI main.py backend integration
+2. **CP-029** (2025-12-25 21:00): Tasks T024-T029 complete - Phase 3 core implementation (6 tasks)
+3. **CP-023** (2025-12-25 20:40): Task T023 complete - rate limiting verified (Phase 3 batch)
+4. **CP-022** (2025-12-25 20:36): Task T022 complete - cache methods verified
+5. **CP-021** (2025-12-25 20:32): Task T021 complete - data_aggregator.py implemented
 
 ## 🔄 Next Actions
 
@@ -170,6 +170,7 @@
 - `frontend/lib/types.ts` - TypeScript interfaces (T027 ✅)
 - `frontend/lib/firestore.ts` - Firestore client (T028 ✅)
 - `frontend/components/GroupCard.tsx` - Group standings component (T029 ⚠️)
+- `frontend/components/MatchCard.tsx` - Match prediction card (T030 ✅)
 - `backend/requirements.txt` - Production dependencies
 - `backend/requirements-dev.txt` - Development dependencies
 

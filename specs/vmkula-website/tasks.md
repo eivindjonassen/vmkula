@@ -460,7 +460,7 @@ Run vitest to verify T015 passes
 - Use Tailwind CSS for layout
 **Dependencies**: T027
 **Parallel**: Yes [P]
-**Status**: 
+**Status**: ✅ Complete
 ### T032: Create app home page with tabs
 **File**: `frontend/app/page.tsx`
 **Description**: Implement main landing page:
