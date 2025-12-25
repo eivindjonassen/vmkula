@@ -19,31 +19,6 @@
 **Dependencies**: None
 **Parallel**: Yes [P]
 **Status**: ✅ Complete
-### T008: Create test for third-place team ranking
-**File**: `backend/tests/test_fifa_engine.py` (additional tests)
-**Description**: Create failing tests for third-place qualification logic:
-- Test ranking of 12 third-place teams across all groups
-- Test top 8 selection criteria (points, GD, goals, fair play)
-- Test edge case: multiple teams with identical records (use deterministic seed)
-- Test that selected teams have correct rank=3 in their groups
-- Verify returned list has exactly 8 teams sorted by qualification criteria
-Expected to FAIL until T015 is implemented
-**Dependencies**: T007
-**Parallel**: No
-**Status**: ✅ Complete
-### T011: Create test for API caching logic
-**File**: `backend/tests/test_data_aggregator.py` (additional tests)
-**Description**: Create failing tests for local cache management:
-- CRITICAL TEST: Use cached data if less than 24 hours old (see plan.md lines 595-626)
-- Test cache file naming: `cache/team_stats_{team_id}_{YYYY-MM-DD}.json`
-- Test cache expiration: data older than 24 hours is refetched
-- Test cache directory creation if missing
-- Test JSON serialization/deserialization of TeamStatistics
-- Test cache hit vs cache miss metrics
-Expected to FAIL until T018 is implemented
-**Dependencies**: T010
-**Parallel**: No
-**Status**: 
 ### T012: Create test for API rate limiting
 **File**: `backend/tests/test_data_aggregator.py` (additional tests)
 **Description**: Create failing tests for API-Football rate limiting:
