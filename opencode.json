@@ -1,6 +1,18 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "model": "anthropic/claude-sonnet-4-5",
+  "mcpServers": {
+    "firebase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-firebase"
+      ],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "${env:GOOGLE_APPLICATION_CREDENTIALS}"
+      }
+    }
+  },
   "tools": {
     "write": true,
     "bash": true
