@@ -1,0 +1,96 @@
+# Cloud Scheduler job configuration for periodic prediction updates
+# This triggers the backend to refresh predictions daily
+
+# IMPORTANT: Replace placeholders before deployment:
+#   - PROJECT_ID: Your Google Cloud project ID
+#   - REGION: Cloud Run service region (e.g., us-central1)
+#   - SERVICE_URL: Full Cloud Run service URL (https://vmkula-backend-xxx.run.app)
+
+name: projects/PROJECT_ID/locations/REGION/jobs/vmkula-daily-update
+description: "Daily World Cup 2026 prediction update (calls backend /api/update-predictions)"
+
+# Schedule: Daily at 10:00 AM UTC (during tournament period: June-July 2026)
+schedule: "0 10 * * *"
+timeZone: "UTC"
+
+# HTTP target configuration
+httpTarget:
+  uri: "SERVICE_URL/api/update-predictions"
+  httpMethod: POST
+  headers:
+    Content-Type: "application/json"
+  
+  # Authentication using OIDC (Cloud Run requires authentication)
+  oidcToken:
+    serviceAccountEmail: "vmkula-backend-sa@PROJECT_ID.iam.gserviceaccount.com"
+    audience: "SERVICE_URL"
+
+# Retry configuration
+retryConfig:
+  retryCount: 3
+  maxRetryDuration: "3600s"  # 1 hour max retry window
+  minBackoffDuration: "5s"
+  maxBackoffDuration: "300s"  # 5 minutes max backoff
+  maxDoublings: 5
+
+# Deadline for job execution (10 minutes - longer than Cloud Run timeout)
+attemptDeadline: "600s"
+
+---
+
+# Deployment Instructions
+#
+# 1. Set environment variables:
+#    export PROJECT_ID="your-project-id"
+#    export REGION="us-central1"
+#    export SERVICE_URL=$(gcloud run services describe vmkula-backend --region=${REGION} --format='value(status.url)')
+#
+# 2. Replace placeholders in scheduler.yaml:
+#    sed -i "s/PROJECT_ID/${PROJECT_ID}/g" backend/scheduler.yaml
+#    sed -i "s/REGION/${REGION}/g" backend/scheduler.yaml
+#    sed -i "s|SERVICE_URL|${SERVICE_URL}|g" backend/scheduler.yaml
+#
+# 3. Create the scheduler job:
+#    gcloud scheduler jobs create http vmkula-daily-update \
+#      --location=${REGION} \
+#      --schedule="0 10 * * *" \
+#      --uri="${SERVICE_URL}/api/update-predictions" \
+#      --http-method=POST \
+#      --oidc-service-account-email="vmkula-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+#      --oidc-token-audience="${SERVICE_URL}" \
+#      --max-retry-attempts=3 \
+#      --max-retry-duration=3600s \
+#      --min-backoff=5s \
+#      --max-backoff=300s \
+#      --time-zone="UTC" \
+#      --description="Daily World Cup 2026 prediction update" \
+#      --project=${PROJECT_ID}
+#
+# 4. Grant Cloud Scheduler invoker permission:
+#    gcloud run services add-iam-policy-binding vmkula-backend \
+#      --region=${REGION} \
+#      --member="serviceAccount:vmkula-backend-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+#      --role="roles/run.invoker" \
+#      --project=${PROJECT_ID}
+#
+# 5. Test the job manually:
+#    gcloud scheduler jobs run vmkula-daily-update --location=${REGION} --project=${PROJECT_ID}
+#
+# 6. View job logs:
+#    gcloud scheduler jobs describe vmkula-daily-update --location=${REGION} --project=${PROJECT_ID}
+#
+# 7. Pause job (off-season):
+#    gcloud scheduler jobs pause vmkula-daily-update --location=${REGION} --project=${PROJECT_ID}
+#
+# 8. Resume job (tournament starts):
+#    gcloud scheduler jobs resume vmkula-daily-update --location=${REGION} --project=${PROJECT_ID}
+#
+# 9. Delete job:
+#    gcloud scheduler jobs delete vmkula-daily-update --location=${REGION} --project=${PROJECT_ID}
+#
+# Monitoring:
+# - View execution history in Cloud Console: Cloud Scheduler > vmkula-daily-update > Execution history
+# - Set up alerts for failed runs: Cloud Monitoring > Alerting > Create Policy
+#   - Metric: cloudfunctions.googleapis.com/scheduler/job/execution/count
+#   - Filter: job_name="vmkula-daily-update" AND status!="success"
+#   - Threshold: > 0 failures in 24 hours

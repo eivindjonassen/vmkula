@@ -219,13 +219,52 @@ gcloud run services update-traffic ${SERVICE_NAME} \
   --to-revisions=REVISION_NAME=100
 ```
 
+## Cloud Scheduler Setup (T043)
+
+### Configure Daily Automated Updates
+
+```bash
+# 1. Get service URL
+SERVICE_URL=$(gcloud run services describe ${SERVICE_NAME} \
+  --region=${REGION} \
+  --format='value(status.url)' \
+  --project=${PROJECT_ID})
+
+# 2. Create Cloud Scheduler job
+gcloud scheduler jobs create http vmkula-daily-update \
+  --location=${REGION} \
+  --schedule="0 10 * * *" \
+  --uri="${SERVICE_URL}/api/update-predictions" \
+  --http-method=POST \
+  --oidc-service-account-email="${SERVICE_ACCOUNT}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --oidc-token-audience="${SERVICE_URL}" \
+  --max-retry-attempts=3 \
+  --max-retry-duration=3600s \
+  --min-backoff=5s \
+  --max-backoff=300s \
+  --time-zone="UTC" \
+  --description="Daily World Cup 2026 prediction update" \
+  --project=${PROJECT_ID}
+
+# 3. Grant Cloud Scheduler invoker permission
+gcloud run services add-iam-policy-binding ${SERVICE_NAME} \
+  --region=${REGION} \
+  --member="serviceAccount:${SERVICE_ACCOUNT}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/run.invoker" \
+  --project=${PROJECT_ID}
+
+# 4. Test the job manually
+gcloud scheduler jobs run vmkula-daily-update --location=${REGION} --project=${PROJECT_ID}
+```
+
+See `backend/scheduler.yaml` for full configuration details.
+
 ## CI/CD with GitHub Actions
 
 See `T046` for automated deployment via GitHub Actions.
 
 ## Next Steps
 
-- **T043**: Set up Cloud Scheduler for daily updates
 - **T046**: Configure GitHub Actions for automated deployments
 - **T048**: Complete backend README documentation
 
