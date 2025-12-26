@@ -6,10 +6,10 @@
 
 - **Feature**: vmkula-website
 - **Phase**: implement
-- **Status**: Awaiting next action
+- **Status**: Active
 - **Active Task**:
-  - **Task ID**: All Phase 5 tasks complete
-  - **Description**: Deployment infrastructure complete - ready for Phase 6 (Documentation)
+  - **Task ID**: T048
+  - **Description**: Create backend README with setup and deployment documentation
   - **Progress**: 46/62 tasks complete (74%)
 
 ## 📝 Recent Session Context
