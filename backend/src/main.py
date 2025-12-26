@@ -264,28 +264,47 @@ def update_tournament() -> Dict[str, Any]:
         # Dark horses: 3rd place teams with good stats (could make a run)
         dark_horses = [standing.team_name for standing in third_place_qualifiers[:3]]
 
-        # Build group stage matches
-        group_matches = []
+        # Build ALL matches (group stage + knockout)
+        all_matches_data = []
         for match in all_matches:
-            # Find team names
-            home_team = next((t for t in teams if t.id == match.home_team_id), None)
-            away_team = next((t for t in teams if t.id == match.away_team_id), None)
+            # Find team names (may be None for TBD knockout matches)
+            home_team = (
+                next((t for t in teams if t.id == match.home_team_id), None)
+                if match.home_team_id
+                else None
+            )
+            away_team = (
+                next((t for t in teams if t.id == match.away_team_id), None)
+                if match.away_team_id
+                else None
+            )
 
-            if home_team and away_team:
-                group_matches.append(
-                    {
-                        "id": match.id,
-                        "match_number": match.match_number,
-                        "stage_id": match.stage_id,
-                        "home_team_id": match.home_team_id,
-                        "away_team_id": match.away_team_id,
-                        "home_team_name": home_team.name,
-                        "away_team_name": away_team.name,
-                        "venue": match.venue,
-                        "kickoff": match.kickoff_at,
-                        "label": f"{home_team.name} vs {away_team.name}",
-                    }
-                )
+            # Use team names if available, otherwise use match label for TBD
+            home_team_name = home_team.name if home_team else "TBD"
+            away_team_name = away_team.name if away_team else "TBD"
+
+            # Use match_label for TBD matches (e.g., "Winner A vs 3rd Place C/D/E")
+            if match.match_label and (
+                home_team_name == "TBD" or away_team_name == "TBD"
+            ):
+                label = match.match_label
+            else:
+                label = f"{home_team_name} vs {away_team_name}"
+
+            all_matches_data.append(
+                {
+                    "id": match.id,
+                    "match_number": match.match_number,
+                    "stage_id": match.stage_id,
+                    "home_team_id": match.home_team_id,
+                    "away_team_id": match.away_team_id,
+                    "home_team_name": home_team_name,
+                    "away_team_name": away_team_name,
+                    "venue": match.venue,
+                    "kickoff": match.kickoff_at,
+                    "label": label,
+                }
+            )
 
         snapshot = {
             "groups": {
@@ -306,7 +325,7 @@ def update_tournament() -> Dict[str, Any]:
                 ]
                 for group, standings in all_standings.items()
             },
-            "matches": group_matches,
+            "matches": all_matches_data,
             "bracket": [
                 {
                     "id": match.match_number,
@@ -326,7 +345,7 @@ def update_tournament() -> Dict[str, Any]:
                 }
                 for match in resolved_bracket
             ],
-            "ai_summary": f"Tournament structure loaded with {len(all_standings)} groups, {len(group_matches)} matches, and {len(resolved_bracket)} knockout matches",
+            "ai_summary": f"Tournament structure loaded with {len(all_standings)} groups, {len(all_matches_data)} matches total ({len([m for m in all_matches_data if m['stage_id'] == 1])} group stage, {len([m for m in all_matches_data if m['stage_id'] > 1])} knockout)",
             "favorites": favorites,
             "darkHorses": dark_horses,
             "errors": errors if errors else None,
