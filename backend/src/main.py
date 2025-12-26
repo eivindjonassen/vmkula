@@ -40,7 +40,7 @@ logging.basicConfig(
 app = FastAPI(
     title="World Cup 2026 Predictions API",
     description="AI-powered predictions for FIFA World Cup 2026",
-    version="1.0.0",
+    version="1.0.1",
 )
 
 # Configure CORS middleware (allow all origins in development)
