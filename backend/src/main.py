@@ -771,8 +771,18 @@ def update_predictions() -> Dict[str, Any]:
                     "Recalculating favorites and dark horses from AI predictions"
                 )
 
+                # Debug: Log prediction structure
+                logger.info(f"Total predictions: {len(predictions)}")
+                if predictions:
+                    sample_pred = predictions[0]
+                    logger.info(f"Sample prediction keys: {list(sample_pred.keys())}")
+                    logger.info(f"Sample prediction: {sample_pred}")
+
                 # Extract group stage predictions (stage_id = 1)
                 group_predictions = [p for p in predictions if p.get("stage_id") == 1]
+                logger.info(
+                    f"Group stage predictions (stage_id=1): {len(group_predictions)}"
+                )
 
                 # Calculate team win probabilities across all group matches
                 team_win_prob = {}
