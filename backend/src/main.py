@@ -765,6 +765,66 @@ def update_predictions() -> Dict[str, Any]:
                             match["has_real_data"] = has_real_data_map[match_id]
                         else:
                             match["has_real_data"] = False
+
+                # Recalculate favorites and dark horses based on AI predictions
+                logger.info(
+                    "Recalculating favorites and dark horses from AI predictions"
+                )
+
+                # Extract group stage predictions (stage_id = 1)
+                group_predictions = [p for p in predictions if p.get("stage_id") == 1]
+
+                # Calculate team win probabilities across all group matches
+                team_win_prob = {}
+                for pred in group_predictions:
+                    # Find the team names from matches
+                    match_id = pred.get("match_id")
+                    match_data = next(
+                        (
+                            m
+                            for m in snapshot.get("matches", [])
+                            if m.get("id") == match_id
+                        ),
+                        None,
+                    )
+
+                    if match_data:
+                        winner = pred.get("winner", "")
+                        win_prob = pred.get("win_probability", 0.5)
+
+                        # Add win probability to the winner
+                        if winner and winner != "Draw":
+                            if winner not in team_win_prob:
+                                team_win_prob[winner] = {"total_prob": 0, "count": 0}
+                            team_win_prob[winner]["total_prob"] += win_prob
+                            team_win_prob[winner]["count"] += 1
+
+                # Calculate average win probability for each team
+                team_avg_prob = {
+                    team: data["total_prob"] / data["count"]
+                    for team, data in team_win_prob.items()
+                    if data["count"] > 0
+                }
+
+                # Sort by average win probability and take top 5 as favorites
+                sorted_teams = sorted(
+                    team_avg_prob.items(), key=lambda x: x[1], reverse=True
+                )
+                favorites = [team for team, prob in sorted_teams[:5]]
+
+                # Dark horses: Teams with moderate win probability (0.55-0.70 range) - potential underdogs
+                dark_horse_candidates = [
+                    (team, prob) for team, prob in sorted_teams if 0.55 <= prob <= 0.70
+                ]
+                dark_horses = [team for team, prob in dark_horse_candidates[:3]]
+
+                # Update snapshot with new favorites and dark horses
+                snapshot["favorites"] = favorites
+                snapshot["darkHorses"] = dark_horses
+
+                logger.info(f"Updated favorites: {favorites}")
+                logger.info(f"Updated dark horses: {dark_horses}")
+
             else:
                 # No existing tournament data - need to run /api/update-tournament first
                 raise HTTPException(
