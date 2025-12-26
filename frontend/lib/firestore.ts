@@ -121,7 +121,7 @@ async function fetchFromFirestore(): Promise<TournamentSnapshot | null> {
     const data: TournamentSnapshot = {
       groups: transformGroups(rawData.groups || {}),
       matches: transformMatches(rawData.matches || []),
-      bracket: rawData.bracket || [],
+      bracket: transformMatches(rawData.bracket || []),  // Transform bracket too!
       aiSummary: rawData.ai_summary || '',
       favorites: rawData.favorites || [],
       darkHorses: rawData.darkHorses || rawData.dark_horses || [],
@@ -258,7 +258,7 @@ export function subscribeToLatestPredictions(
       const data: TournamentSnapshot = {
         groups: transformGroups(rawData.groups || {}),
         matches: transformMatches(rawData.matches || []),
-        bracket: rawData.bracket || [],
+        bracket: transformMatches(rawData.bracket || []),  // Transform bracket too!
         aiSummary: rawData.ai_summary || '',
         favorites: rawData.favorites || [],
         darkHorses: rawData.darkHorses || rawData.dark_horses || [],
