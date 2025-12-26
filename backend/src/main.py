@@ -351,13 +351,13 @@ def update_tournament() -> Dict[str, Any]:
                     "away_team_name": match.away_team_name,
                     "venue": match.venue,
                     "kickoff": match.kickoff_at,
-                    # Use original match_label if teams are TBD, otherwise use team names
-                    "label": knockout_match_labels.get(
-                        match.match_number,
-                        f"{match.home_team_name} vs {match.away_team_name}",
-                    )
-                    if match.home_team_name == "TBD" or match.away_team_name == "TBD"
-                    else f"{match.home_team_name} vs {match.away_team_name}",
+                    # Use original labels if teams are TBD, otherwise use resolved team names
+                    "label": (
+                        f"{match.home_team_label} vs {match.away_team_label}"
+                        if match.home_team_name == "TBD"
+                        or match.away_team_name == "TBD"
+                        else f"{match.home_team_name} vs {match.away_team_name}"
+                    ),
                 }
                 for match in resolved_bracket
             ],

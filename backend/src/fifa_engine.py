@@ -27,6 +27,8 @@ class BracketMatch:
     away_team_name: str
     venue: str
     kickoff_at: str
+    home_team_label: str = ""  # Original label (e.g., "Winner A")
+    away_team_label: str = ""  # Original label (e.g., "3rd Place C/D/E")
 
 
 class FifaEngine:
@@ -225,6 +227,8 @@ class FifaEngine:
                     away_team_name=away_name,
                     venue=match.venue,
                     kickoff_at=match.kickoff_at,
+                    home_team_label=match.home_team_label,  # Keep original label
+                    away_team_label=match.away_team_label,  # Keep original label
                 )
             )
 
@@ -236,17 +240,31 @@ class FifaEngine:
         standings: Dict[str, List[GroupStanding]],
         third_place_by_group: Dict[str, str],
     ) -> str:
-        if label.startswith("Winner "):
-            group = label.replace("Winner ", "")
-            return standings[group][0].team_name
-        elif label.startswith("Runner-up "):
-            group = label.replace("Runner-up ", "")
-            return standings[group][1].team_name
-        elif label.startswith("3rd Place "):
-            # Example: "3rd Place C/D/E"
-            options = label.replace("3rd Place ", "").split("/")
-            for opt in options:
-                if opt in third_place_by_group:
-                    return third_place_by_group[opt]
-            return label  # Fallback if none qualified
-        return label
+        """Resolve team label to actual team name or keep as TBD."""
+        try:
+            if label.startswith("Winner "):
+                group = label.replace("Winner ", "").strip()
+                if group in standings and len(standings[group]) > 0:
+                    return standings[group][0].team_name
+                return "TBD"  # Group not resolved yet
+            elif label.startswith("Runner-up "):
+                group = label.replace("Runner-up ", "").strip()
+                if group in standings and len(standings[group]) > 1:
+                    return standings[group][1].team_name
+                return "TBD"  # Group not resolved yet
+            elif label.startswith("3rd Place "):
+                # Example: "3rd Place C/D/E"
+                options = label.replace("3rd Place ", "").split("/")
+                for opt in options:
+                    opt = opt.strip()
+                    if opt in third_place_by_group:
+                        return third_place_by_group[opt]
+                return "TBD"  # No qualified 3rd place team yet
+            return label  # Unknown format, return as-is
+        except (KeyError, IndexError) as e:
+            # Log error but don't crash - return TBD
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to resolve label '{label}': {e}")
+            return "TBD"
