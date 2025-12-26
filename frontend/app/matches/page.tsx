@@ -55,7 +55,8 @@ export default function MatchesPage() {
   const filteredMatches = useMemo(() => {
     if (!snapshot) return []
 
-    let matches = [...snapshot.bracket]
+    // Use matches array which includes ALL 104 matches (group + knockout)
+    let matches = snapshot.matches || []
 
     // Filter by stage
     if (selectedStage !== 'all') {

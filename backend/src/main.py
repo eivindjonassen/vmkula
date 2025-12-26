@@ -206,7 +206,8 @@ def update_tournament() -> Dict[str, Any]:
             errors.append(f"Failed to rank third-place teams: {str(e)}")
             third_place_qualifiers = []
 
-        # Step 4: Resolve knockout bracket
+        # Step 4: Build bracket array (include ALL knockout matches, resolved or not)
+        # Note: Resolution happens here, but we keep TBD for unresolved teams
         try:
             # Build knockout match data structure
             from dataclasses import dataclass
@@ -222,12 +223,15 @@ def update_tournament() -> Dict[str, Any]:
 
             knockout_match_data = []
             knockout_match_labels = {}  # Store original labels for TBD teams
+
+            logger.info(f"Processing {len(knockout_matches)} knockout matches")
+
             for ko_match in knockout_matches:
                 # Store original match label for later use
                 knockout_match_labels[ko_match.match_number] = ko_match.match_label
 
                 # Parse match_label to extract team labels
-                if " vs " in ko_match.match_label:
+                if ko_match.match_label and " vs " in ko_match.match_label:
                     parts = ko_match.match_label.split(" vs ")
                     home_label = parts[0].strip()
                     away_label = parts[1].strip()
@@ -242,12 +246,24 @@ def update_tournament() -> Dict[str, Any]:
                             stage_id=ko_match.stage_id,
                         )
                     )
+                else:
+                    logger.warning(
+                        f"Match {ko_match.match_number} has invalid label: {ko_match.match_label}"
+                    )
 
+            logger.info(f"Built {len(knockout_match_data)} knockout match objects")
+
+            # Resolve bracket (determine actual teams from labels)
             resolved_bracket = engine.resolve_knockout_bracket(
                 all_standings, third_place_qualifiers, knockout_match_data
             )
+
+            logger.info(f"Resolved {len(resolved_bracket)} bracket matches")
+
         except Exception as e:
-            errors.append(f"Failed to resolve knockout bracket: {str(e)}")
+            error_msg = f"Failed to resolve knockout bracket: {str(e)}"
+            errors.append(error_msg)
+            logger.error(error_msg, exc_info=True)
             resolved_bracket = []
 
         # Step 5: Build tournament snapshot WITHOUT AI predictions
@@ -345,7 +361,7 @@ def update_tournament() -> Dict[str, Any]:
                 }
                 for match in resolved_bracket
             ],
-            "ai_summary": f"Tournament structure loaded with {len(all_standings)} groups, {len(all_matches_data)} matches total ({len([m for m in all_matches_data if m['stage_id'] == 1])} group stage, {len([m for m in all_matches_data if m['stage_id'] > 1])} knockout)",
+            "ai_summary": f"Turneringsstruktur lastet med {len(all_standings)} grupper, {len(all_matches_data)} kamper totalt ({len([m for m in all_matches_data if m['stage_id'] == 1])} gruppespill, {len([m for m in all_matches_data if m['stage_id'] > 1])} sluttspill)",
             "favorites": favorites,
             "darkHorses": dark_horses,
             "errors": errors if errors else None,
@@ -542,7 +558,7 @@ def update_predictions() -> Dict[str, Any]:
                 # Add predictions to existing snapshot
                 snapshot["predictions"] = predictions
                 snapshot["ai_summary"] = (
-                    f"Generated {len(predictions)} AI predictions for World Cup 2026"
+                    f"Genererte {len(predictions)} AI-spådommer for VM 2026"
                 )
             else:
                 # No existing tournament data - need to run /api/update-tournament first
