@@ -13,6 +13,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { fetchLatestPredictions } from '../lib/firestore'
 import type { TournamentSnapshot } from '../lib/types'
@@ -25,14 +26,27 @@ import ConnectionStatus from '../components/ConnectionStatus'
 type Tab = 'groups' | 'matches' | 'bracket'
 
 export default function Home() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const t = useTranslations('home')
   const tNav = useTranslations('navigation')
   const tCommon = useTranslations('common')
-  const [activeTab, setActiveTab] = useState<Tab>('groups')
+  
+  // Get initial tab from URL or default to 'groups'
+  const tabFromUrl = (searchParams.get('tab') as Tab) || 'groups'
+  const [activeTab, setActiveTab] = useState<Tab>(tabFromUrl)
   const [snapshot, setSnapshot] = useState<TournamentSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+
+  // Sync tab with URL on mount and when URL changes
+  useEffect(() => {
+    const tab = (searchParams.get('tab') as Tab) || 'groups'
+    if (['groups', 'matches', 'bracket'].includes(tab)) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
 
   // Fetch predictions on mount
   useEffect(() => {
@@ -69,6 +83,13 @@ export default function Home() {
     } finally {
       setRefreshing(false)
     }
+  }
+
+  // Handle tab change - update URL and state
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab)
+    // Update URL with new tab parameter
+    router.push(`/?tab=${tab}`, { scroll: false })
   }
 
   // Format timestamp in Norwegian
@@ -136,7 +157,7 @@ export default function Home() {
               {(['groups', 'matches', 'bracket'] as Tab[]).map((tab, index) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => handleTabChange(tab)}
                   className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 sm:py-2.5 rounded-xl text-xs sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-300 min-h-[44px] sm:min-h-0 ${
                     activeTab === tab
                       ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30'
