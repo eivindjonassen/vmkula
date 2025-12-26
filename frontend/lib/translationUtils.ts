@@ -92,7 +92,7 @@ export function translateMatchLabel(label: string, t: TranslationFunction): stri
  * @returns Norwegian team name
  */
 export function translateTeamName(teamName: string): string {
-  // Team name mapping for special cases
+  // Team name mapping for Norwegian translations
   const teamNameMap: Record<string, string> = {
     // Placeholder teams
     'Winner UEFA Playoff A': 'Vinner UEFA Playoff A',
@@ -102,11 +102,56 @@ export function translateTeamName(teamName: string): string {
     'Winner AFC Playoff': 'Vinner AFC Playoff',
     'Winner CONMEBOL Playoff': 'Vinner CONMEBOL Playoff',
     
-    // Country names (if API-Football uses different names)
-    // Add mappings as needed when switching to API-Football
-    // 'South Korea': 'Sør-Korea',
-    // 'United States': 'USA',
-    // etc.
+    // Country names - Norwegian translations
+    'Algeria': 'Algerie',
+    'Argentina': 'Argentina',
+    'Australia': 'Australia',
+    'Austria': 'Østerrike',
+    'Belgium': 'Belgia',
+    'Brazil': 'Brasil',
+    'Cabo Verde': 'Kapp Verde',
+    'Canada': 'Canada',
+    'Colombia': 'Colombia',
+    'Croatia': 'Kroatia',
+    'Curaçao': 'Curaçao',
+    'Côte d\'Ivoire': 'Elfenbenskysten',
+    'Ecuador': 'Ecuador',
+    'Egypt': 'Egypt',
+    'England': 'England',
+    'France': 'Frankrike',
+    'Germany': 'Tyskland',
+    'Ghana': 'Ghana',
+    'Haiti': 'Haiti',
+    'IR Iran': 'Iran',
+    'Japan': 'Japan',
+    'Jordan': 'Jordan',
+    'Mexico': 'Mexico',
+    'Morocco': 'Marokko',
+    'Netherlands': 'Nederland',
+    'New Zealand': 'New Zealand',
+    'Norway': 'Norge',
+    'Panama': 'Panama',
+    'Paraguay': 'Paraguay',
+    'Poland': 'Polen',
+    'Portugal': 'Portugal',
+    'Qatar': 'Qatar',
+    'Saudi Arabia': 'Saudi-Arabia',
+    'Scotland': 'Skottland',
+    'Senegal': 'Senegal',
+    'South Africa': 'Sør-Afrika',
+    'South Korea': 'Sør-Korea',
+    'Spain': 'Spania',
+    'Switzerland': 'Sveits',
+    'Tunisia': 'Tunisia',
+    'USA': 'USA',
+    'Uruguay': 'Uruguay',
+    'Uzbekistan': 'Usbekistan',
+    
+    // API-Football may use different names - add mappings as needed
+    // These will be filled in when we switch to API-Football
+    'United States': 'USA',
+    'Korea Republic': 'Sør-Korea',
+    'Iran': 'Iran',
   }
 
   return teamNameMap[teamName] || teamName

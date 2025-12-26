@@ -12,6 +12,7 @@
 
 import { useTranslations } from 'next-intl'
 import type { Group } from '../lib/types'
+import { translateTeamName } from '../lib/translationUtils'
 
 interface GroupCardProps {
   group: Group
@@ -93,7 +94,7 @@ export default function GroupCard({ group }: GroupCardProps) {
                   <td className="px-4 py-3">
                     <div className="flex items-center space-x-2">
                       <span className="text-2xl">{team.flag}</span>
-                      <span className="font-medium text-gray-900">{team.name}</span>
+                      <span className="font-medium text-gray-900">{translateTeamName(team.name)}</span>
                     </div>
                   </td>
 
