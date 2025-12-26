@@ -38,6 +38,9 @@ class Config:
     # Development mode
     DEBUG: bool = False
 
+    # Database mode: Use Firestore (True) or SQLite (False)
+    USE_FIRESTORE: bool = True
+
     def __init__(self):
         """Load and validate environment variables"""
         self.load_from_env()
@@ -67,6 +70,13 @@ class Config:
         )
         self.MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
         self.DEBUG = os.getenv("DEBUG", "").lower() in ("true", "1", "yes")
+
+        # Database mode: default to Firestore unless explicitly disabled
+        self.USE_FIRESTORE = os.getenv("USE_FIRESTORE", "true").lower() in (
+            "true",
+            "1",
+            "yes",
+        )
 
     def validate(self):
         """Validate that all required environment variables are set"""

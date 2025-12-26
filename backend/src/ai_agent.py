@@ -183,18 +183,18 @@ class AIAgent:
         away = matchup["away_team"]
         api_prediction = matchup.get("api_football_prediction")
 
-        # Build prompt with aggregated statistics
-        prompt = f"""Predict the outcome of this World Cup 2026 match:
+        # Build prompt with aggregated statistics (in Norwegian)
+        prompt = f"""Spå resultatet av denne VM 2026-kampen:
 
-Home Team: {home["name"]}
-- Average xG: {home.get("avg_xg", "N/A")}
-- Clean Sheets: {home.get("clean_sheets", 0)}
-- Recent Form: {home.get("form_string", "Unknown")}
+Hjemmelag: {home["name"]}
+- Gjennomsnittlig xG: {home.get("avg_xg", "N/A")}
+- Nullet motstanderen: {home.get("clean_sheets", 0)}
+- Siste form: {home.get("form_string", "Ukjent")}
 
-Away Team: {away["name"]}
-- Average xG: {away.get("avg_xg", "N/A")}
-- Clean Sheets: {away.get("clean_sheets", 0)}
-- Recent Form: {away.get("form_string", "Unknown")}"""
+Bortelag: {away["name"]}
+- Gjennomsnittlig xG: {away.get("avg_xg", "N/A")}
+- Nullet motstanderen: {away.get("clean_sheets", 0)}
+- Siste form: {away.get("form_string", "Ukjent")}"""
 
         # Add API-Football prediction data if available
         if api_prediction:
@@ -204,27 +204,27 @@ Away Team: {away["name"]}
 
             prompt += f"""
 
-API-Football Statistical Prediction:
-- Winner Probabilities: Home {percent.get("home", "N/A")}%, Draw {percent.get("draw", "N/A")}%, Away {percent.get("away", "N/A")}%
-- Predicted Winner: {winner.get("name", "N/A")}
-- Advice: {predictions.get("advice", "N/A")}
+API-Football statistisk spådom:
+- Sannsynlighet for vinner: Hjemme {percent.get("home", "N/A")}%, Uavgjort {percent.get("draw", "N/A")}%, Borte {percent.get("away", "N/A")}%
+- Forventet vinner: {winner.get("name", "N/A")}
+- Råd: {predictions.get("advice", "N/A")}
 
-Comparison Metrics:
-- Form: {api_prediction.get("comparison", {}).get("form", {}).get("home", "N/A")} (home) vs {api_prediction.get("comparison", {}).get("form", {}).get("away", "N/A")} (away)
-- Attack: {api_prediction.get("comparison", {}).get("att", {}).get("home", "N/A")} vs {api_prediction.get("comparison", {}).get("att", {}).get("away", "N/A")}
-- Defense: {api_prediction.get("comparison", {}).get("def", {}).get("home", "N/A")} vs {api_prediction.get("comparison", {}).get("def", {}).get("away", "N/A")}
+Sammenligningsmålinger:
+- Form: {api_prediction.get("comparison", {}).get("form", {}).get("home", "N/A")} (hjemme) vs {api_prediction.get("comparison", {}).get("form", {}).get("away", "N/A")} (borte)
+- Angrep: {api_prediction.get("comparison", {}).get("att", {}).get("home", "N/A")} vs {api_prediction.get("comparison", {}).get("att", {}).get("away", "N/A")}
+- Forsvar: {api_prediction.get("comparison", {}).get("def", {}).get("home", "N/A")} vs {api_prediction.get("comparison", {}).get("def", {}).get("away", "N/A")}
 
-Use this statistical prediction as a baseline, but apply your analysis of team form, xG, and clean sheets to refine the prediction."""
+Bruk denne statistiske spådommen som grunnlag, men bruk din analyse av lagform, xG og clean sheets for å forbedre spådommen."""
 
         prompt += """
 
-Provide prediction as JSON with this exact schema:
+Gi spådommen som JSON med nøyaktig dette skjemaet:
 {
-  "winner": "team name or Draw",
+  "winner": "lagnavn eller Uavgjort",
   "win_probability": 0.0-1.0,
-  "predicted_home_score": integer,
-  "predicted_away_score": integer,
-  "reasoning": "brief explanation (max 200 chars)"
+  "predicted_home_score": heltall,
+  "predicted_away_score": heltall,
+  "reasoning": "kort forklaring på norsk (maks 200 tegn)"
 }"""
 
         logger.debug(f"Calling Gemini API with prompt: {prompt[:100]}...")
@@ -323,7 +323,7 @@ Provide prediction as JSON with this exact schema:
         prediction.setdefault("win_probability", 0.5)
         prediction.setdefault("predicted_home_score", 1)
         prediction.setdefault("predicted_away_score", 1)
-        prediction.setdefault("reasoning", "AI prediction")
+        prediction.setdefault("reasoning", "AI-spådom")
 
     def rule_based_prediction(self, matchup: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -350,11 +350,11 @@ Provide prediction as JSON with this exact schema:
         # Handle missing xG data
         if home_xg is None or away_xg is None:
             return {
-                "winner": "Draw",
+                "winner": "Uavgjort",
                 "win_probability": 0.33,
                 "predicted_home_score": 1,
                 "predicted_away_score": 1,
-                "reasoning": "Insufficient data for prediction",
+                "reasoning": "Utilstrekkelig data for spådom",
                 "confidence": "low",
             }
 
@@ -364,11 +364,11 @@ Provide prediction as JSON with this exact schema:
         if abs(xg_diff) < 0.3:
             # Close match - predict draw
             return {
-                "winner": "Draw",
+                "winner": "Uavgjort",
                 "win_probability": 0.4,
                 "predicted_home_score": 1,
                 "predicted_away_score": 1,
-                "reasoning": f"Evenly matched teams (xG diff: {xg_diff:.2f})",
+                "reasoning": f"Jevnbyrdige lag (xG diff: {xg_diff:.2f})",
                 "confidence": "low",
             }
         elif xg_diff > 0:
@@ -379,7 +379,7 @@ Provide prediction as JSON with this exact schema:
                 "win_probability": prob,
                 "predicted_home_score": 2,
                 "predicted_away_score": 1,
-                "reasoning": f"Higher xG average ({home_xg:.2f} vs {away_xg:.2f})",
+                "reasoning": f"Høyere xG-gjennomsnitt ({home_xg:.2f} vs {away_xg:.2f})",
                 "confidence": "low",
             }
         else:
@@ -390,6 +390,6 @@ Provide prediction as JSON with this exact schema:
                 "win_probability": prob,
                 "predicted_home_score": 1,
                 "predicted_away_score": 2,
-                "reasoning": f"Higher xG average ({away_xg:.2f} vs {home_xg:.2f})",
+                "reasoning": f"Høyere xG-gjennomsnitt ({away_xg:.2f} vs {home_xg:.2f})",
                 "confidence": "low",
             }
