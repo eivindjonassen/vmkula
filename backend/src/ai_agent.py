@@ -38,11 +38,17 @@ class AIAgent:
     """Generate match predictions using Gemini AI with rule-based fallback."""
 
     def __init__(self):
-        """Initialize Gemini AI client with JSON response mode."""
+        """Initialize Gemini AI client with JSON response mode and rate limiting."""
+        self.last_request_time = 0.0  # Track last API call for rate limiting
+        self.min_delay = 0.05  # Tier 1 Paid: 2,000 RPM = 33.3 req/sec, minimal delay
+
         if GENAI_VERSION == "new":
-            # New google.genai SDK
+            # New google.genai SDK (Google AI Studio - Tier 1 Paid)
             self.client = genai.Client(api_key=config.GEMINI_API_KEY or "test-key")
-            self.model_name = "gemini-2.0-flash-exp"
+
+            # Using gemini-2.5-flash for best quality
+            # Tier 1 Paid: 2,000 RPM limit (no need for Lite version)
+            self.model_name = "gemini-2.5-flash"
         else:
             # Legacy google.generativeai SDK
             genai.configure(api_key=config.GEMINI_API_KEY or "test-key")
@@ -91,7 +97,16 @@ class AIAgent:
 
         for attempt in range(max_retries + 1):
             try:
+                # Rate limiting: ensure minimum delay between requests
+                if self.last_request_time > 0:
+                    elapsed_since_last = time.time() - self.last_request_time
+                    if elapsed_since_last < self.min_delay:
+                        sleep_time = self.min_delay - elapsed_since_last
+                        logger.debug(f"Rate limiting: sleeping {sleep_time:.1f}s")
+                        time.sleep(sleep_time)
+
                 response = self.call_gemini(matchup)
+                self.last_request_time = time.time()  # Update last request time
                 parsed = self._parse_response(response.text)
 
                 # Validate response has required fields
@@ -105,6 +120,29 @@ class AIAgent:
 
             except Exception as e:
                 elapsed = time.time() - start_time
+                error_msg = str(e)
+
+                # Check if it's a 429 rate limit error
+                if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                    # Extract retry delay if provided (default to 30s for rate limits)
+                    retry_delay = 30
+                    if "retryDelay" in error_msg:
+                        # Try to extract delay from error message
+                        import re
+
+                        match = re.search(r"'retryDelay': '(\d+)s'", error_msg)
+                        if match:
+                            retry_delay = int(match.group(1))
+
+                    logger.warning(
+                        f"Rate limit hit for match {match_id}, would need to wait {retry_delay}s. Using fallback instead."
+                    )
+                    # Immediately use fallback instead of waiting
+                    fallback = self.rule_based_prediction(matchup)
+                    logger.info(
+                        f"Rule-based fallback for match {match_id}: {fallback.get('winner')}"
+                    )
+                    return fallback
 
                 if attempt == max_retries:
                     # Final attempt failed - use rule-based fallback
@@ -133,7 +171,7 @@ class AIAgent:
         This method is designed to be mockable for testing.
 
         Args:
-            matchup: Match data with team statistics
+            matchup: Match data with team statistics and optional API-Football prediction
 
         Returns:
             Gemini response object with .text attribute
@@ -143,6 +181,7 @@ class AIAgent:
         """
         home = matchup["home_team"]
         away = matchup["away_team"]
+        api_prediction = matchup.get("api_football_prediction")
 
         # Build prompt with aggregated statistics
         prompt = f"""Predict the outcome of this World Cup 2026 match:
@@ -155,16 +194,38 @@ Home Team: {home["name"]}
 Away Team: {away["name"]}
 - Average xG: {away.get("avg_xg", "N/A")}
 - Clean Sheets: {away.get("clean_sheets", 0)}
-- Recent Form: {away.get("form_string", "Unknown")}
+- Recent Form: {away.get("form_string", "Unknown")}"""
+
+        # Add API-Football prediction data if available
+        if api_prediction:
+            predictions = api_prediction.get("predictions", {})
+            winner = predictions.get("winner", {})
+            percent = predictions.get("percent", {})
+
+            prompt += f"""
+
+API-Football Statistical Prediction:
+- Winner Probabilities: Home {percent.get("home", "N/A")}%, Draw {percent.get("draw", "N/A")}%, Away {percent.get("away", "N/A")}%
+- Predicted Winner: {winner.get("name", "N/A")}
+- Advice: {predictions.get("advice", "N/A")}
+
+Comparison Metrics:
+- Form: {api_prediction.get("comparison", {}).get("form", {}).get("home", "N/A")} (home) vs {api_prediction.get("comparison", {}).get("form", {}).get("away", "N/A")} (away)
+- Attack: {api_prediction.get("comparison", {}).get("att", {}).get("home", "N/A")} vs {api_prediction.get("comparison", {}).get("att", {}).get("away", "N/A")}
+- Defense: {api_prediction.get("comparison", {}).get("def", {}).get("home", "N/A")} vs {api_prediction.get("comparison", {}).get("def", {}).get("away", "N/A")}
+
+Use this statistical prediction as a baseline, but apply your analysis of team form, xG, and clean sheets to refine the prediction."""
+
+        prompt += """
 
 Provide prediction as JSON with this exact schema:
-{{
+{
   "winner": "team name or Draw",
   "win_probability": 0.0-1.0,
   "predicted_home_score": integer,
   "predicted_away_score": integer,
   "reasoning": "brief explanation (max 200 chars)"
-}}"""
+}"""
 
         logger.debug(f"Calling Gemini API with prompt: {prompt[:100]}...")
         api_start = time.time()
@@ -178,6 +239,9 @@ Provide prediction as JSON with this exact schema:
                     config=types.GenerateContentConfig(
                         response_mime_type="application/json",
                         temperature=0.7,
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                            disable=True  # Disable AFC - we don't use function calling
+                        ),
                     ),
                 )
 

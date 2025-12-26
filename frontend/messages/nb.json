@@ -15,6 +15,7 @@
     "backOnline": "Tilbake på nettet"
   },
   "navigation": {
+    "favorites": "Favoritter",
     "groups": "Grupper",
     "matches": "Kamper",
     "bracket": "Sluttspill"

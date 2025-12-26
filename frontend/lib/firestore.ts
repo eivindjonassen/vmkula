@@ -15,6 +15,7 @@
 import { initializeApp, getApps } from 'firebase/app'
 import { getFirestore, doc, getDoc, onSnapshot, Unsubscribe } from 'firebase/firestore'
 import type { TournamentSnapshot } from './types'
+import { getCountryFlag } from './countryFlags'
 
 // Firebase configuration
 const firebaseConfig = {
@@ -116,12 +117,28 @@ async function fetchFromFirestore(): Promise<TournamentSnapshot | null> {
     console.log('🔥 Raw Firestore document:', rawData)
     console.log('📊 Matches in raw data:', rawData.matches ? rawData.matches.length : 'NO MATCHES FIELD')
     console.log('📊 Bracket in raw data:', rawData.bracket ? rawData.bracket.length : 'NO BRACKET FIELD')
+    console.log('📊 Predictions in raw data:', rawData.predictions ? rawData.predictions.length : 'NO PREDICTIONS FIELD')
+
+    // Create a map of predictions by match_id for easy lookup
+    const predictionsMap = new Map()
+    if (rawData.predictions) {
+      rawData.predictions.forEach((pred: any) => {
+        predictionsMap.set(pred.match_id, {
+          winner: pred.winner,
+          winProbability: pred.win_probability,
+          predictedHomeScore: pred.predicted_home_score,
+          predictedAwayScore: pred.predicted_away_score,
+          reasoning: pred.reasoning,
+          confidence: pred.confidence,
+        })
+      })
+    }
 
     // Transform Firestore data to match frontend types
     const data: TournamentSnapshot = {
       groups: transformGroups(rawData.groups || {}),
-      matches: transformMatches(rawData.matches || []),
-      bracket: transformMatches(rawData.bracket || []),  // Transform bracket too!
+      matches: transformMatches(rawData.matches || [], predictionsMap),
+      bracket: transformMatches(rawData.bracket || [], predictionsMap),  // Transform bracket too!
       aiSummary: rawData.ai_summary || '',
       favorites: rawData.favorites || [],
       darkHorses: rawData.darkHorses || rawData.dark_horses || [],
@@ -175,23 +192,32 @@ function revalidateCache(): void {
  * Transform Firestore matches array to frontend format.
  * 
  * Converts snake_case to camelCase for match fields.
+ * Adds country flags based on team names.
+ * Merges predictions from predictions map.
  */
-function transformMatches(firestoreMatches: any[]): any[] {
-  return firestoreMatches.map(match => ({
-    id: match.id,
-    matchNumber: match.match_number,
-    homeTeamId: match.home_team_id,
-    awayTeamId: match.away_team_id,
-    homeTeamName: match.home_team_name,
-    awayTeamName: match.away_team_name,
-    venue: match.venue,
-    stageId: match.stage_id,
-    kickoff: match.kickoff,
-    label: match.label,
-    homeScore: match.home_score,
-    awayScore: match.away_score,
-    prediction: match.prediction,
-  }))
+function transformMatches(firestoreMatches: any[], predictionsMap?: Map<number, any>): any[] {
+  return firestoreMatches.map(match => {
+    const prediction = predictionsMap?.get(match.id)
+    
+    return {
+      id: match.id,
+      matchNumber: match.match_number,
+      homeTeamId: match.home_team_id,
+      awayTeamId: match.away_team_id,
+      homeTeamName: match.home_team_name,
+      awayTeamName: match.away_team_name,
+      homeTeamFlag: getCountryFlag(match.home_team_name),
+      awayTeamFlag: getCountryFlag(match.away_team_name),
+      venue: match.venue,
+      stageId: match.stage_id,
+      kickoff: match.kickoff,
+      label: match.label,
+      homeScore: match.home_score,
+      awayScore: match.away_score,
+      prediction: prediction || match.prediction,
+      hasRealData: match.has_real_data,
+    }
+  })
 }
 
 /**
@@ -199,6 +225,7 @@ function transformMatches(firestoreMatches: any[]): any[] {
  * 
  * Firestore: { A: [team1, team2], B: [team3, team4] }
  * Frontend: { A: { letter: 'A', teams: [team1, team2] }, B: { letter: 'B', teams: [team3, team4] } }
+ * Adds country flags based on team names.
  */
 function transformGroups(firestoreGroups: Record<string, any[]>): Record<string, any> {
   const transformed: Record<string, any> = {}
@@ -206,21 +233,24 @@ function transformGroups(firestoreGroups: Record<string, any[]>): Record<string,
   for (const [letter, teams] of Object.entries(firestoreGroups)) {
     transformed[letter] = {
       letter,
-      teams: teams.map(team => ({
-        id: team.team_id || 0,
-        name: team.team_name || '',
-        flag: team.flag || '🏴',
-        played: team.played || 0,
-        won: team.won || 0,
-        draw: team.draw || 0,
-        lost: team.lost || 0,
-        goalsFor: team.goals_for || 0,
-        goalsAgainst: team.goals_against || 0,
-        points: team.points || 0,
-        rank: team.rank,
-        predictedPlacement: team.predicted_placement,
-        predictedRank: team.predicted_rank,
-      })),
+      teams: teams.map(team => {
+        const teamName = team.team_name || team.name || ''
+        return {
+          id: team.team_id || 0,
+          name: teamName,
+          flag: team.flag || getCountryFlag(teamName),
+          played: team.played || 0,
+          won: team.won || 0,
+          draw: team.draw || 0,
+          lost: team.lost || 0,
+          goalsFor: team.goals_for || 0,
+          goalsAgainst: team.goals_against || 0,
+          points: team.points || 0,
+          rank: team.rank,
+          predictedPlacement: team.predicted_placement,
+          predictedRank: team.predicted_rank,
+        }
+      }),
     }
   }
   
@@ -254,11 +284,26 @@ export function subscribeToLatestPredictions(
       const rawData = docSnap.data()
       console.log('🔔 Real-time update received')
 
+      // Create predictions map
+      const predictionsMap = new Map()
+      if (rawData.predictions) {
+        rawData.predictions.forEach((pred: any) => {
+          predictionsMap.set(pred.match_id, {
+            winner: pred.winner,
+            winProbability: pred.win_probability,
+            predictedHomeScore: pred.predicted_home_score,
+            predictedAwayScore: pred.predicted_away_score,
+            reasoning: pred.reasoning,
+            confidence: pred.confidence,
+          })
+        })
+      }
+
       // Transform data
       const data: TournamentSnapshot = {
         groups: transformGroups(rawData.groups || {}),
-        matches: transformMatches(rawData.matches || []),
-        bracket: transformMatches(rawData.bracket || []),  // Transform bracket too!
+        matches: transformMatches(rawData.matches || [], predictionsMap),
+        bracket: transformMatches(rawData.bracket || [], predictionsMap),  // Transform bracket too!
         aiSummary: rawData.ai_summary || '',
         favorites: rawData.favorites || [],
         darkHorses: rawData.darkHorses || rawData.dark_horses || [],

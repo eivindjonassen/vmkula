@@ -191,19 +191,28 @@ def test_retry_exponential_backoff(monkeypatch):
 
     aggregator = DataAggregator()
 
-    # Mock API to fail with 429 twice, then succeed
+    # Mock API to fail with 429 twice, then succeed with valid fixture data
     mock_api = MagicMock(
         side_effect=[
             Exception("429 Rate Limit"),
             Exception("429 Rate Limit"),
-            {"status": "ok"},
+            {
+                "response": [
+                    {
+                        "teams": {"home": {"id": 1}, "away": {"id": 2}},
+                        "goals": {"home": 2, "away": 1},
+                    }
+                ]
+            },
         ]
     )
     aggregator.fetch_from_api = mock_api
 
     result = aggregator.fetch_team_stats(1)
 
-    assert result == {"status": "ok"}
+    # Should succeed and return computed metrics (not raw response)
+    assert "form_string" in result
+    assert "confidence" in result
     assert mock_api.call_count == 3
     # Wait 1s, then 2s
     mock_sleep.assert_any_call(1)
@@ -227,3 +236,114 @@ def test_max_retries_failure(monkeypatch):
         aggregator.fetch_team_stats(1)
 
     assert mock_api.call_count == 4  # Initial + 3 retries
+
+
+def test_fetch_team_fixtures_both_past_and_upcoming():
+    """Test fetching both past and upcoming fixtures."""
+    aggregator = DataAggregator()
+
+    # Mock API response for past fixtures
+    mock_past_response = {
+        "response": [
+            {
+                "fixture": {
+                    "id": 1001,
+                    "date": "2024-12-01T19:00:00+00:00",
+                    "venue": {"name": "Ullevaal Stadion"},
+                    "status": {"short": "FT"},
+                },
+                "league": {"name": "World Cup - Qualification"},
+                "teams": {
+                    "home": {"id": 1090, "name": "Norway"},
+                    "away": {"id": 1, "name": "England"},
+                },
+                "goals": {"home": 2, "away": 1},
+            },
+        ]
+    }
+
+    # Mock API response for upcoming fixtures
+    mock_upcoming_response = {
+        "response": [
+            {
+                "fixture": {
+                    "id": 1002,
+                    "date": "2025-01-15T18:00:00+00:00",
+                    "venue": {"name": "Wembley Stadium"},
+                    "status": {"short": "NS"},
+                },
+                "league": {"name": "Friendlies"},
+                "teams": {
+                    "home": {"id": 1, "name": "England"},
+                    "away": {"id": 1090, "name": "Norway"},
+                },
+                "goals": {"home": None, "away": None},
+            },
+        ]
+    }
+
+    # Mock fetch_from_api to return different responses for past and upcoming
+    aggregator.fetch_from_api = MagicMock(
+        side_effect=[mock_past_response, mock_upcoming_response]
+    )
+
+    result = aggregator.fetch_team_fixtures(1090, last=5, next=5)
+
+    assert result["total_count"] == 2
+    assert len(result["past_fixtures"]) == 1
+    assert len(result["upcoming_fixtures"]) == 1
+
+    # Verify past fixture structure
+    past_fixture = result["past_fixtures"][0]
+    assert past_fixture["fixture_id"] == 1001
+    assert past_fixture["status"] == "FT"
+    assert past_fixture["goals"]["home"] == 2
+    assert past_fixture["goals"]["away"] == 1
+    assert past_fixture["home_team"]["name"] == "Norway"
+    assert past_fixture["league"] == "World Cup - Qualification"
+
+    # Verify upcoming fixture structure
+    upcoming_fixture = result["upcoming_fixtures"][0]
+    assert upcoming_fixture["fixture_id"] == 1002
+    assert upcoming_fixture["status"] == "NS"
+    assert upcoming_fixture["away_team"]["name"] == "Norway"
+    assert upcoming_fixture["league"] == "Friendlies"
+
+
+def test_fetch_team_fixtures_empty_response():
+    """Test handling empty fixture response (no matches found)."""
+    aggregator = DataAggregator()
+
+    # Mock empty API responses for both past and upcoming
+    mock_empty_response = {"response": []}
+    aggregator.fetch_from_api = MagicMock(return_value=mock_empty_response)
+
+    result = aggregator.fetch_team_fixtures(1090, last=5, next=5)
+
+    assert result["total_count"] == 0
+    assert len(result["past_fixtures"]) == 0
+    assert len(result["upcoming_fixtures"]) == 0
+
+
+def test_fetch_from_api_supports_last_and_next_params():
+    """Test that fetch_from_api correctly handles last and next parameters."""
+    import requests
+    from unittest.mock import patch
+
+    aggregator = DataAggregator()
+
+    # Mock requests.get to capture the params
+    with patch("requests.get") as mock_get:
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"response": []}
+        mock_response.raise_for_status = MagicMock()
+        mock_get.return_value = mock_response
+
+        # Call with both last and next parameters
+        aggregator.fetch_from_api(772, last=5, next=3)
+
+        # Verify the API was called with correct params
+        call_args = mock_get.call_args
+        assert call_args[1]["params"]["team"] == 772
+        assert call_args[1]["params"]["last"] == 5
+        assert call_args[1]["params"]["next"] == 3

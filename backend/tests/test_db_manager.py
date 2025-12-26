@@ -28,6 +28,9 @@ def test_load_all_teams_returns_48_teams():
     assert hasattr(first_team, "group_letter"), (
         "Team should have 'group_letter' attribute"
     )
+    assert hasattr(first_team, "api_football_id"), (
+        "Team should have 'api_football_id' attribute"
+    )
 
 
 def test_load_all_matches_returns_104_matches():
@@ -119,3 +122,19 @@ def test_load_matches_by_stage_id():
     # Verify all returned matches have stage_id=1
     for match in group_stage_matches:
         assert match.stage_id == 1, f"Match {match.match_number} should have stage_id=1"
+
+
+def test_norway_has_api_football_id():
+    """Test that Norway team has API-Football ID set (1090)"""
+    from src.db_manager import DBManager
+
+    db_path = Path(__file__).parent.parent / "worldcup2026.db"
+    db = DBManager(str(db_path))
+
+    teams = db.load_all_teams()
+    norway = next((t for t in teams if t.name == "Norway"), None)
+
+    assert norway is not None, "Norway should exist in database"
+    assert norway.api_football_id == 1090, (
+        f"Norway should have API-Football ID 1090, got {norway.api_football_id}"
+    )

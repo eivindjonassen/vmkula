@@ -57,7 +57,7 @@ class DataAggregator:
         self.last_request_time = 0.0
 
     def transform_api_response(
-        self, api_response: Dict[str, Any], team_id: int
+        self, api_response: Dict[str, Any], team_id: int, fetch_xg: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Transform API-Football response to internal fixtures format.
@@ -80,12 +80,10 @@ class DataAggregator:
           ]
         }
 
-        Note: xG (expected goals) data may not be available in API-Football free tier.
-        If not available, fixtures will have xg=None.
-
         Args:
             api_response: Raw API-Football response
             team_id: Team ID to extract stats for (determines perspective)
+            fetch_xg: If True, fetch xG from statistics endpoint (costs extra API call per fixture)
 
         Returns:
             List of fixture dictionaries with keys:
@@ -124,10 +122,15 @@ class DataAggregator:
             else:
                 result = "D"
 
-            # Extract xG if available (may not be in free tier)
-            # API-Football v3 xG is in "statistics" endpoint, not fixtures endpoint
-            # For free tier, we'll set xg=None and rely on fallback mode
+            # Extract xG if requested
             xg = None
+            if fetch_xg:
+                fixture_id = match["fixture"]["id"]
+                stats = self.fetch_fixture_statistics(fixture_id)
+                if stats:
+                    xg = self.extract_xg_from_statistics(stats, team_id)
+                    if xg:
+                        logger.info(f"✅ xG extracted for fixture {fixture_id}: {xg}")
 
             fixtures.append(
                 {
@@ -135,6 +138,7 @@ class DataAggregator:
                     "goals_against": goals_against,
                     "xg": xg,
                     "result": result,
+                    "fixture_id": match["fixture"]["id"],
                 }
             )
 
@@ -250,14 +254,18 @@ class DataAggregator:
         except (IOError, OSError) as e:
             logger.error(f"Failed to save cache for team {team_id}: {e}")
 
-    def fetch_from_api(self, team_id: int) -> Dict[str, Any]:
+    def fetch_from_api(
+        self, team_id: int, last: int = 5, next: int = 0
+    ) -> Dict[str, Any]:
         """
         Fetch team fixtures from API-Football v3.
 
-        Fetches last 5 matches for the specified team.
+        Fetches past and/or upcoming matches for the specified team.
 
         Args:
             team_id: Team ID to fetch (API-Football team ID)
+            last: Number of last (completed) fixtures to fetch (default: 5)
+            next: Number of upcoming fixtures to fetch (default: 0)
 
         Returns:
             API response dictionary with fixtures data
@@ -275,13 +283,16 @@ class DataAggregator:
             "x-rapidapi-host": "v3.football.api-sports.io",
         }
 
-        # Query parameters: last 5 fixtures for team
-        params = {
-            "team": team_id,
-            "last": 5,
-        }
+        # Query parameters: last N fixtures and/or next M fixtures for team
+        params = {"team": team_id}
+        if last > 0:
+            params["last"] = last
+        if next > 0:
+            params["next"] = next
 
-        logger.debug(f"Calling API-Football: GET {url}?team={team_id}&last=5")
+        logger.debug(
+            f"Calling API-Football: GET {url}?team={team_id}&last={last}&next={next}"
+        )
 
         try:
             response = requests.get(url, headers=headers, params=params, timeout=30)
@@ -310,7 +321,7 @@ class DataAggregator:
             logger.error(f"API-Football request failed: {e}")
             raise
 
-    def fetch_team_stats(self, team_id: int) -> Dict[str, Any]:
+    def fetch_team_stats(self, team_id: int, fetch_xg: bool = True) -> Dict[str, Any]:
         """
         Fetch and compute team statistics with rate limiting and retry logic.
 
@@ -319,9 +330,11 @@ class DataAggregator:
         - Exponential backoff on failures (1s, 2s, 4s)
         - Max 3 retries
         - Automatic metrics computation from API response
+        - Optional xG fetching (costs extra API calls)
 
         Args:
             team_id: Team ID to fetch
+            fetch_xg: If True, fetch xG from statistics endpoint (default: True)
 
         Returns:
             Stats dictionary with computed metrics:
@@ -339,7 +352,7 @@ class DataAggregator:
         max_retries = 3
         retry_delays = [1, 2, 4]
 
-        logger.info(f"Fetching stats for team {team_id}")
+        logger.info(f"Fetching stats for team {team_id} (fetch_xg={fetch_xg})")
         start_time = time.time()
 
         for attempt in range(max_retries + 1):
@@ -350,12 +363,14 @@ class DataAggregator:
                 logger.debug(f"Rate limit delay: 0.5s")
 
             try:
-                # Fetch raw API response
-                api_response = self.fetch_from_api(team_id)
+                # Fetch raw API response (last 5 matches)
+                api_response = self.fetch_from_api(team_id, last=5, next=0)
                 self.last_request_time = time.time()
 
-                # Transform API response to internal format
-                fixtures = self.transform_api_response(api_response, team_id)
+                # Transform API response to internal format (with optional xG fetching)
+                fixtures = self.transform_api_response(
+                    api_response, team_id, fetch_xg=fetch_xg
+                )
 
                 # Compute metrics
                 stats = self.compute_metrics(fixtures)
@@ -368,6 +383,7 @@ class DataAggregator:
                     "data_completeness": stats.data_completeness,
                     "confidence": stats.confidence,
                     "fallback_mode": stats.fallback_mode,
+                    "has_real_data": True,  # Data fetched from API-Football
                 }
 
                 elapsed = time.time() - start_time
@@ -406,3 +422,310 @@ class DataAggregator:
 
         # Should never reach here, but satisfy type checker
         raise DataAggregationError(team_id, "Max retries exceeded")
+
+    def fetch_team_fixtures(
+        self, team_id: int, last: int = 5, next: int = 5
+    ) -> Dict[str, Any]:
+        """
+        Fetch both past and upcoming fixtures for a team.
+
+        NOTE: API-Football does not support using 'last' and 'next' parameters
+        together, so this method makes TWO separate API calls.
+
+        Args:
+            team_id: API-Football team ID
+            last: Number of completed fixtures to fetch
+            next: Number of upcoming fixtures to fetch
+
+        Returns:
+            Dictionary with:
+                - past_fixtures: List of completed match dicts
+                - upcoming_fixtures: List of upcoming match dicts
+                - total_count: Total number of fixtures returned
+
+        Raises:
+            DataAggregationError: After max retries exceeded
+            APIRateLimitError: On 429 rate limit errors
+        """
+        logger.info(f"Fetching fixtures for team {team_id} (last={last}, next={next})")
+        start_time = time.time()
+
+        past_fixtures = []
+        upcoming_fixtures = []
+
+        # Fetch past fixtures (if requested)
+        if last > 0:
+            past_fixtures = self._fetch_fixtures_by_type(
+                team_id, last=last, fetch_type="past"
+            )
+
+        # Fetch upcoming fixtures (if requested)
+        if next > 0:
+            upcoming_fixtures = self._fetch_fixtures_by_type(
+                team_id, next=next, fetch_type="upcoming"
+            )
+
+        result = {
+            "past_fixtures": past_fixtures,
+            "upcoming_fixtures": upcoming_fixtures,
+            "total_count": len(past_fixtures) + len(upcoming_fixtures),
+        }
+
+        elapsed = time.time() - start_time
+        logger.info(
+            f"Fixtures fetch SUCCESS for team {team_id} "
+            f"(elapsed {elapsed:.2f}s, {len(past_fixtures)} past, {len(upcoming_fixtures)} upcoming)"
+        )
+        return result
+
+    def _fetch_fixtures_by_type(
+        self, team_id: int, last: int = 0, next: int = 0, fetch_type: str = "past"
+    ) -> List[Dict[str, Any]]:
+        """
+        Internal method to fetch either past or upcoming fixtures.
+
+        Args:
+            team_id: API-Football team ID
+            last: Number of completed fixtures (use for past)
+            next: Number of upcoming fixtures (use for upcoming)
+            fetch_type: "past" or "upcoming" (for logging)
+
+        Returns:
+            List of fixture dictionaries
+
+        Raises:
+            DataAggregationError: After max retries exceeded
+            APIRateLimitError: On 429 rate limit errors
+        """
+        max_retries = 3
+        retry_delays = [1, 2, 4]
+
+        for attempt in range(max_retries + 1):
+            # Rate limiting: 0.5s delay between requests
+            if self.last_request_time > 0:
+                time.sleep(0.5)
+                logger.debug(f"Rate limit delay: 0.5s")
+
+            try:
+                # Fetch raw API response
+                api_response = self.fetch_from_api(team_id, last=last, next=next)
+                self.last_request_time = time.time()
+
+                # Parse fixtures
+                fixtures = []
+                for match in api_response.get("response", []):
+                    fixture_data = {
+                        "fixture_id": match["fixture"]["id"],
+                        "date": match["fixture"]["date"],
+                        "venue": match["fixture"]["venue"]["name"],
+                        "status": match["fixture"]["status"]["short"],
+                        "league": match["league"]["name"],
+                        "home_team": {
+                            "id": match["teams"]["home"]["id"],
+                            "name": match["teams"]["home"]["name"],
+                        },
+                        "away_team": {
+                            "id": match["teams"]["away"]["id"],
+                            "name": match["teams"]["away"]["name"],
+                        },
+                    }
+
+                    # Add goals if match is finished
+                    if match["goals"]["home"] is not None:
+                        fixture_data["goals"] = {
+                            "home": match["goals"]["home"],
+                            "away": match["goals"]["away"],
+                        }
+
+                    fixtures.append(fixture_data)
+
+                logger.debug(
+                    f"Fetched {len(fixtures)} {fetch_type} fixtures for team {team_id}"
+                )
+                return fixtures
+
+            except Exception as e:
+                error_msg = str(e)
+
+                # Check for rate limit error
+                if "429" in error_msg or "rate limit" in error_msg.lower():
+                    logger.warning(
+                        f"Rate limit hit for team {team_id} (attempt {attempt + 1})"
+                    )
+                    if attempt == max_retries:
+                        raise APIRateLimitError(
+                            f"Rate limit exceeded for team {team_id}"
+                        )
+
+                # On last attempt, raise final exception
+                if attempt == max_retries:
+                    logger.error(
+                        f"{fetch_type.capitalize()} fixtures fetch FAILED for team {team_id} "
+                        f"after {attempt + 1} attempts: {error_msg}"
+                    )
+                    raise DataAggregationError(team_id, "Max retries exceeded") from e
+
+                # Exponential backoff
+                delay = retry_delays[attempt]
+                logger.warning(
+                    f"Fixtures fetch failed (attempt {attempt + 1}), retrying in {delay}s: {error_msg}"
+                )
+                time.sleep(delay)
+
+        # Should never reach here, but satisfy type checker
+        raise DataAggregationError(team_id, "Max retries exceeded")
+
+    def fetch_match_prediction(self, fixture_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Fetch API-Football's prediction for a specific fixture.
+
+        Args:
+            fixture_id: API-Football fixture ID
+
+        Returns:
+            Dict with prediction data including:
+            - predictions.winner (home/away/draw with probabilities)
+            - predictions.goals (over/under percentages)
+            - comparison (form, attack, defense, poisson)
+            - teams (head-to-head data)
+
+            Returns None if no prediction available or error occurs.
+        """
+        cache_key = f"prediction_{fixture_id}"
+
+        # Check cache first
+        cached = self.get_cached_stats(cache_key)
+        if cached:
+            logger.info(f"✅ Cache HIT for prediction {fixture_id}")
+            return cached
+
+        # Rate limiting
+        self._enforce_rate_limit()
+
+        # API call
+        url = "https://v3.football.api-sports.io/predictions"
+        headers = {"x-apisports-key": config.API_FOOTBALL_KEY}
+        params = {"fixture": fixture_id}
+
+        try:
+            logger.info(f"🌐 Fetching prediction for fixture {fixture_id}...")
+            response = requests.get(url, headers=headers, params=params, timeout=10)
+            response.raise_for_status()
+
+            data = response.json()
+
+            if not data.get("response"):
+                logger.warning(f"No prediction available for fixture {fixture_id}")
+                return None
+
+            prediction_data = data["response"][0]
+
+            # Cache the result
+            self.save_cached_stats(cache_key, prediction_data)
+
+            logger.info(f"✅ Prediction fetched for fixture {fixture_id}")
+            return prediction_data
+
+        except Exception as e:
+            logger.error(f"Failed to fetch prediction for fixture {fixture_id}: {e}")
+            return None
+
+    def fetch_fixture_statistics(self, fixture_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Fetch detailed match statistics including xG.
+
+        Args:
+            fixture_id: API-Football fixture ID
+
+        Returns:
+            Dict with statistics for both teams including:
+            - Expected Goals (xG)
+            - Shots on target
+            - Possession
+            - Passes
+            - Tackles
+
+            Returns None if no statistics available.
+        """
+        cache_key = f"stats_{fixture_id}"
+
+        # Check cache first
+        cached = self.get_cached_stats(cache_key)
+        if cached:
+            logger.info(f"✅ Cache HIT for statistics {fixture_id}")
+            return cached
+
+        # Rate limiting
+        self._enforce_rate_limit()
+
+        # API call
+        url = "https://v3.football.api-sports.io/fixtures/statistics"
+        headers = {"x-apisports-key": config.API_FOOTBALL_KEY}
+        params = {"fixture": fixture_id}
+
+        try:
+            logger.info(f"🌐 Fetching statistics for fixture {fixture_id}...")
+            response = requests.get(url, headers=headers, params=params, timeout=10)
+            response.raise_for_status()
+
+            data = response.json()
+
+            if not data.get("response"):
+                logger.warning(f"No statistics available for fixture {fixture_id}")
+                return None
+
+            stats_data = data["response"]
+
+            # Cache the result
+            self.save_cached_stats(cache_key, stats_data)
+
+            logger.info(f"✅ Statistics fetched for fixture {fixture_id}")
+            return stats_data
+
+        except Exception as e:
+            logger.error(f"Failed to fetch statistics for fixture {fixture_id}: {e}")
+            return None
+
+    def extract_xg_from_statistics(
+        self, statistics: List[Dict[str, Any]], team_id: int
+    ) -> Optional[float]:
+        """
+        Extract xG (expected goals) for a specific team from match statistics.
+
+        Args:
+            statistics: Statistics response from API-Football
+            team_id: API-Football team ID to extract xG for
+
+        Returns:
+            xG value as float, or None if not available
+        """
+        try:
+            # Find team's statistics
+            team_stats = next(
+                (s for s in statistics if s["team"]["id"] == team_id), None
+            )
+
+            if not team_stats:
+                return None
+
+            # Find expected goals statistic
+            stats_list = team_stats.get("statistics", [])
+            xg_stat = next(
+                (s for s in stats_list if s["type"] == "expected_goals"), None
+            )
+
+            if xg_stat and xg_stat.get("value"):
+                return float(xg_stat["value"])
+
+            return None
+
+        except (KeyError, ValueError, TypeError) as e:
+            logger.warning(f"Failed to extract xG: {e}")
+            return None
+
+    def _enforce_rate_limit(self):
+        """Enforce 0.5 second delay between API requests."""
+        elapsed = time.time() - self.last_request_time
+        if elapsed < 0.5:
+            time.sleep(0.5 - elapsed)
+        self.last_request_time = time.time()

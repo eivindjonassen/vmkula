@@ -21,6 +21,7 @@ export interface TeamStats {
   rank?: number
   predictedPlacement?: string
   predictedRank?: number
+  hasRealData?: boolean  // True if data from API-Football, false if mock/placeholder
 }
 
 /**
@@ -53,6 +54,8 @@ export interface Match {
   awayTeamId: number | null
   homeTeamName?: string
   awayTeamName?: string
+  homeTeamFlag?: string
+  awayTeamFlag?: string
   venue: string
   stageId: number
   kickoff: string
@@ -60,6 +63,7 @@ export interface Match {
   homeScore?: number
   awayScore?: number
   prediction?: MatchPrediction
+  hasRealData?: boolean  // True if team data from API-Football, false if mock/placeholder
 }
 
 /**

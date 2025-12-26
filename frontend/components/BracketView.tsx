@@ -55,14 +55,23 @@ export default function BracketView({ bracket }: BracketViewProps) {
   return (
     <div className="w-full">
       {/* Main Bracket - Horizontal Scroll on Mobile */}
-      <div className="overflow-x-auto pb-8">
-        <div className="inline-flex gap-8 min-w-max px-4 py-6">
+      <div className="relative">
+        {/* Scroll indicator - left */}
+        <div className="absolute left-0 top-0 bottom-8 w-8 bg-gradient-to-r from-slate-50 to-transparent pointer-events-none z-10 lg:hidden" aria-hidden="true" />
+        
+        {/* Scroll indicator - right */}
+        <div className="absolute right-0 top-0 bottom-8 w-8 bg-gradient-to-l from-slate-50 to-transparent pointer-events-none z-10 flex items-center justify-end pr-2 lg:hidden" aria-hidden="true">
+          <span className="text-slate-400 animate-pulse text-lg">→</span>
+        </div>
+        
+        <div className="overflow-x-auto pb-8 snap-x snap-mandatory scroll-smooth">
+          <div className="inline-flex gap-8 min-w-max px-4 py-6">
           {STAGE_ORDER.map((stageId) => {
             const matches = matchesByStage[stageId] || []
             const stageName = STAGE_NAMES[stageId] || `Stage ${stageId}`
 
             return (
-              <div key={stageId} className="flex flex-col items-center">
+              <div key={stageId} className="flex flex-col items-center snap-center">
                 {/* Stage Header */}
                 <div className="mb-6 text-center">
                   <h3 className="text-lg font-bold text-emerald-800 mb-1">
@@ -88,6 +97,7 @@ export default function BracketView({ bracket }: BracketViewProps) {
               </div>
             )
           })}
+          </div>
         </div>
       </div>
 
