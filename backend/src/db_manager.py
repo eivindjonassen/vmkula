@@ -11,6 +11,7 @@ class Team:
     fifa_code: str
     group_letter: str
     is_placeholder: bool
+    api_football_id: Optional[int] = None
 
 
 @dataclass
@@ -42,7 +43,7 @@ class DBManager:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, team_name, fifa_code, group_letter, is_placeholder FROM teams"
+                "SELECT id, team_name, fifa_code, group_letter, is_placeholder, api_football_id FROM teams"
             )
             rows = cursor.fetchall()
             return [
@@ -52,6 +53,7 @@ class DBManager:
                     fifa_code=row["fifa_code"],
                     group_letter=row["group_letter"],
                     is_placeholder=bool(row["is_placeholder"]),
+                    api_football_id=row["api_football_id"],
                 )
                 for row in rows
             ]
@@ -85,7 +87,7 @@ class DBManager:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT id, team_name, fifa_code, group_letter, is_placeholder FROM teams WHERE group_letter = ?",
+                "SELECT id, team_name, fifa_code, group_letter, is_placeholder, api_football_id FROM teams WHERE group_letter = ?",
                 (group_letter,),
             )
             rows = cursor.fetchall()
@@ -96,6 +98,7 @@ class DBManager:
                     fifa_code=row["fifa_code"],
                     group_letter=row["group_letter"],
                     is_placeholder=bool(row["is_placeholder"]),
+                    api_football_id=row["api_football_id"],
                 )
                 for row in rows
             ]
