@@ -26,10 +26,14 @@ export default function MatchCard({ match, prediction }: MatchCardProps) {
   const t = useTranslations('matchCard')
   const tCommon = useTranslations('common')
 
-  // Handle TBD matchups
-  const isTBD = !match.homeTeamId || !match.awayTeamId
-  const homeTeam = match.homeTeamName || match.label.split(' vs ')[0]
-  const awayTeam = match.awayTeamName || match.label.split(' vs ')[1] || 'TBD'
+  // Handle TBD matchups - use label if teams are not determined yet
+  const isTBD = !match.homeTeamId || !match.awayTeamId || match.homeTeamName === 'TBD' || match.awayTeamName === 'TBD'
+  const homeTeam = (match.homeTeamName && match.homeTeamName !== 'TBD') 
+    ? match.homeTeamName 
+    : match.label.split(' vs ')[0]
+  const awayTeam = (match.awayTeamName && match.awayTeamName !== 'TBD') 
+    ? match.awayTeamName 
+    : match.label.split(' vs ')[1] || 'TBD'
 
   // Format kickoff time in Norwegian
   const kickoffDate = new Date(match.kickoff)
