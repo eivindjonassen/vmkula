@@ -15,6 +15,7 @@
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { Match, MatchPrediction } from '../lib/types'
+import { translateBracketLabel, translateTeamName, isBracketLabel } from '../lib/translationUtils'
 
 interface MatchCardProps {
   match: Match
@@ -25,15 +26,26 @@ export default function MatchCard({ match, prediction }: MatchCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const t = useTranslations('matchCard')
   const tCommon = useTranslations('common')
+  const tBracket = useTranslations('bracketView')
 
   // Handle TBD matchups - use label if teams are not determined yet
   const isTBD = !match.homeTeamId || !match.awayTeamId || match.homeTeamName === 'TBD' || match.awayTeamName === 'TBD'
-  const homeTeam = (match.homeTeamName && match.homeTeamName !== 'TBD') 
+  
+  // Get raw team names/labels
+  const rawHomeTeam = (match.homeTeamName && match.homeTeamName !== 'TBD') 
     ? match.homeTeamName 
     : match.label.split(' vs ')[0]
-  const awayTeam = (match.awayTeamName && match.awayTeamName !== 'TBD') 
+  const rawAwayTeam = (match.awayTeamName && match.awayTeamName !== 'TBD') 
     ? match.awayTeamName 
     : match.label.split(' vs ')[1] || 'TBD'
+  
+  // Translate to Norwegian
+  const homeTeam = isBracketLabel(rawHomeTeam) 
+    ? translateBracketLabel(rawHomeTeam, (key) => tBracket(key))
+    : translateTeamName(rawHomeTeam)
+  const awayTeam = isBracketLabel(rawAwayTeam) 
+    ? translateBracketLabel(rawAwayTeam, (key) => tBracket(key))
+    : translateTeamName(rawAwayTeam)
 
   // Format kickoff time in Norwegian
   const kickoffDate = new Date(match.kickoff)
