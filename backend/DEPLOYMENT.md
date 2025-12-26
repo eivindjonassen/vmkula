@@ -259,14 +259,120 @@ gcloud scheduler jobs run vmkula-daily-update --location=${REGION} --project=${P
 
 See `backend/scheduler.yaml` for full configuration details.
 
+## Monitoring & Observability
+
+### Cloud Monitoring Dashboard
+
+**Create a custom dashboard** for production monitoring:
+
+```bash
+# View logs in Cloud Console
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=${SERVICE_NAME}" \
+  --limit=50 \
+  --format=json
+```
+
+### Recommended Alert Policies
+
+**1. High Error Rate Alert**
+```bash
+# Alert when HTTP 5xx error rate > 5%
+# Set up in Cloud Console: Monitoring → Alerting → Create Policy
+# Metric: Cloud Run → Request count (filtered by response_code_class = "5xx")
+# Condition: Threshold > 5% of total requests
+# Notification: Email, SMS, or Slack
+```
+
+**2. Request Latency Alert**
+```bash
+# Alert when p95 latency > 60 seconds
+# Metric: Cloud Run → Request latencies (p95)
+# Condition: Threshold > 60000ms
+```
+
+**3. API Rate Limit Warning**
+```bash
+# Monitor API-Football usage (manual review)
+# Check cache hit rate in logs:
+grep "Cache HIT" logs.txt | wc -l
+grep "Cache MISS" logs.txt | wc -l
+```
+
+### Log-Based Metrics
+
+**Track key metrics** from application logs:
+
+```bash
+# Cache hit rate
+gcloud logging metrics create cache_hit_rate \
+  --description="Percentage of cache hits for team stats" \
+  --log-filter='resource.type="cloud_run_revision" AND "Cache HIT"'
+
+# Gemini fallback rate  
+gcloud logging metrics create gemini_fallback_rate \
+  --description="Percentage of predictions using rule-based fallback" \
+  --log-filter='resource.type="cloud_run_revision" AND "Rule-based fallback"'
+```
+
+## Pre-Deployment Checklist
+
+Before deploying to production, verify:
+
+**Backend**:
+- [ ] All tests passing: `cd backend && pytest --cov=src`
+- [ ] Environment variables set in Secret Manager
+- [ ] Service account created with correct permissions
+- [ ] `worldcup2026.db` file exists in `backend/` directory
+- [ ] API keys verified (API-Football, Gemini)
+- [ ] Firestore indexes deployed: `firebase deploy --only firestore:indexes`
+
+**Infrastructure**:
+- [ ] Google Cloud project created with billing enabled
+- [ ] Required APIs enabled (Cloud Run, Build, Container Registry, Secret Manager, Scheduler)
+- [ ] Cloud Build service account has necessary permissions
+- [ ] Firestore database provisioned
+
+**Post-Deployment**:
+- [ ] Health check endpoint returns 200: `curl ${SERVICE_URL}/health`
+- [ ] Test prediction update: `curl -X POST ${SERVICE_URL}/api/update-predictions`
+- [ ] Verify Firestore data: Check `predictions/latest` document in Firebase Console
+- [ ] Monitor logs for errors: `gcloud run services logs tail ${SERVICE_NAME}`
+- [ ] Set up Cloud Monitoring alerts (error rate, latency)
+
 ## CI/CD with GitHub Actions
 
 See `T046` for automated deployment via GitHub Actions.
+
+## Troubleshooting
+
+### Common Deployment Issues
+
+**Build Fails: "Cannot find worldcup2026.db"**
+- **Solution**: Ensure `worldcup2026.db` is committed to repository in `backend/` directory
+- Verify: `ls backend/worldcup2026.db`
+
+**Deployment Fails: "Service account does not exist"**
+- **Solution**: Create service account (see step 2)
+- Verify: `gcloud iam service-accounts list --project=${PROJECT_ID}`
+
+**Runtime Error: "Firestore permission denied"**
+- **Solution**: Grant `roles/datastore.user` to service account
+- Command: `gcloud projects add-iam-policy-binding ${PROJECT_ID} --member=serviceAccount:${SERVICE_ACCOUNT}@${PROJECT_ID}.iam.gserviceaccount.com --role=roles/datastore.user`
+
+**API-Football 429 Rate Limit**
+- **Cause**: Exceeded free tier limit (100 requests/day)
+- **Solution**: Check cache hit rate, upgrade to paid tier, or wait 24 hours
+
+**Gemini API Failures**
+- **Expected**: Rule-based fallback will activate after 2 failed attempts
+- **Verify**: Check logs for "Rule-based fallback" messages
+- **Action**: Monitor fallback rate (should be < 10%)
 
 ## Next Steps
 
 - **T046**: Configure GitHub Actions for automated deployments
 - **T048**: Complete backend README documentation
+- **Frontend Deployment**: See `../frontend/README.md` for Firebase Hosting deployment
 
 ---
 

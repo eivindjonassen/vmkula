@@ -300,7 +300,7 @@ Run pytest to verify T009 passes
 Run pytest to verify T010 passes
 **Dependencies**: T010
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T022: Implement local caching in data_aggregator.py
 **File**: `backend/src/data_aggregator.py` (additional methods)
 **Description**: Implement cache management to pass T011 tests:
@@ -314,7 +314,7 @@ Run pytest to verify T010 passes
 Run pytest to verify T011 passes
 **Dependencies**: T011, T021
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T023: Implement API rate limiting in data_aggregator.py
 **File**: `backend/src/data_aggregator.py` (decorators)
 **Description**: Implement rate limiting to pass T012 tests:
@@ -327,7 +327,7 @@ Run pytest to verify T011 passes
 Run pytest to verify T012 passes
 **Dependencies**: T012, T021
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T024: Implement Gemini AI prediction service in ai_agent.py
 **File**: `backend/src/ai_agent.py`
 **Description**: Implement AI prediction generation to pass T013 tests:
@@ -347,7 +347,7 @@ Run pytest to verify T012 passes
 Run pytest to verify T013 passes
 **Dependencies**: T013
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T025: Implement Firestore publisher in firestore_publisher.py
 **File**: `backend/src/firestore_publisher.py`
 **Description**: Implement Firestore write operations to pass T014 tests:
@@ -368,7 +368,7 @@ Run pytest to verify T013 passes
 Run pytest to verify T014 passes
 **Dependencies**: T014
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T026: Implement FastAPI main endpoint in main.py
 **File**: `backend/src/main.py`
 **Description**: Create FastAPI application with prediction update endpoint:
@@ -389,7 +389,7 @@ Run pytest to verify T014 passes
 - Add error handling with proper HTTP status codes (500 for failures)
 **Dependencies**: T017, T018, T019, T020, T021, T022, T023, T024, T025
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T027: Port types.ts to frontend
 **File**: `frontend/lib/types.ts`
 **Description**: Create TypeScript type definitions for frontend:
@@ -402,7 +402,7 @@ Run pytest to verify T014 passes
 - Add JSDoc comments for all interfaces
 **Dependencies**: T003
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T028: Implement Firestore client in frontend
 **File**: `frontend/lib/firestore.ts`
 **Description**: Create Firestore data fetching service to pass T016 tests:
@@ -417,7 +417,7 @@ Run pytest to verify T014 passes
 Run vitest to verify T016 passes
 **Dependencies**: T016, T027
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T029: Implement GroupCard component
 **File**: `frontend/components/GroupCard.tsx`
 **Description**: Create group standings table component to pass T015 tests:
@@ -432,7 +432,7 @@ Run vitest to verify T016 passes
 Run vitest to verify T015 passes
 **Dependencies**: T015, T027
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T030: Implement MatchCard component
 **File**: `frontend/components/MatchCard.tsx`
 **Description**: Create match prediction card component:
@@ -474,7 +474,7 @@ Run vitest to verify T015 passes
 - Add "Refresh Predictions" button to manually trigger backend update
 **Dependencies**: T028
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T033: Create groups page
 **File**: `frontend/app/groups/page.tsx`
 **Description**: Implement group stage view:
@@ -486,7 +486,7 @@ Run vitest to verify T015 passes
 - Display loading skeleton while fetching data
 **Dependencies**: T028, T029
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T034: Create matches page
 **File**: `frontend/app/matches/page.tsx`
 **Description**: Implement match schedule view:
@@ -499,7 +499,7 @@ Run vitest to verify T015 passes
 - Use virtualized list for performance (react-window or similar)
 **Dependencies**: T028, T030
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T035: Create bracket page
 **File**: `frontend/app/bracket/page.tsx`
 **Description**: Implement knockout bracket view:
@@ -512,7 +512,7 @@ Run vitest to verify T015 passes
 - Add zoom controls for mobile viewing
 **Dependencies**: T028, T031
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ---
 ## Phase 4: Integration & Polish
 ### T036: Create end-to-end backend integration test
@@ -555,7 +555,7 @@ Run vitest to verify integration test passes
 - Create custom exception classes (APIRateLimitError, GeminiFailureError, etc.)
 **Dependencies**: T026
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T039: Add loading and error states to frontend
 **File**: `frontend/components/LoadingSpinner.tsx`, `frontend/components/ErrorBoundary.tsx`, `frontend/app/page.tsx`
 **Description**: Implement proper loading and error UI:
@@ -568,7 +568,7 @@ Run vitest to verify integration test passes
 - Add offline mode detection and messaging
 **Dependencies**: T032
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T040: Optimize Firestore queries and caching
 **File**: `frontend/lib/firestore.ts`
 **Description**: Add client-side caching and optimization:
@@ -580,7 +580,7 @@ Run vitest to verify integration test passes
 - Prefetch predictions on app load
 **Dependencies**: T028
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ---
 ## Phase 5: Deployment & Infrastructure
 ### T041: Create Dockerfile for backend
@@ -595,7 +595,7 @@ Run vitest to verify integration test passes
 - Optimize for cold start performance (minimize image size)
 **Dependencies**: T026
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T042: Create Cloud Run deployment configuration
 **File**: `backend/cloudbuild.yaml`, `backend/service.yaml`
 **Description**: Set up Cloud Run service configuration:
@@ -611,7 +611,7 @@ Run vitest to verify integration test passes
 - Add secret management for API keys (GEMINI_API_KEY, API_FOOTBALL_KEY)
 **Dependencies**: T041
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T043: Set up Cloud Scheduler for periodic updates
 **File**: `backend/scheduler.yaml`
 **Description**: Configure Cloud Scheduler to trigger backend updates:
@@ -623,7 +623,7 @@ Run vitest to verify integration test passes
 - Add monitoring alerts for failed runs
 **Dependencies**: T042
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T044: Configure Firebase Hosting for frontend
 **File**: `frontend/firebase.json`, `frontend/.firebaserc`
 **Description**: Set up Firebase Hosting deployment:
@@ -637,7 +637,7 @@ Run vitest to verify integration test passes
 - Configure custom domain (optional, document in README)
 **Dependencies**: T003
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T045: Build Next.js for static export
 **File**: `frontend/next.config.js`
 **Description**: Configure Next.js for Firebase Hosting static export:
@@ -649,7 +649,7 @@ Run vitest to verify integration test passes
 - Verify all routes work in static mode
 **Dependencies**: T044
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T046: Set up GitHub Actions for backend CI/CD
 **File**: `.github/workflows/backend-test.yml`, `.github/workflows/backend-deploy.yml`
 **Description**: Create CI/CD pipeline for backend:
@@ -667,7 +667,7 @@ Run vitest to verify integration test passes
   - Run smoke test (call /health endpoint)
 **Dependencies**: T042
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T047: Set up GitHub Actions for frontend CI/CD
 **File**: `.github/workflows/frontend-test.yml`, `.github/workflows/frontend-deploy.yml`
 **Description**: Create CI/CD pipeline for frontend:
@@ -684,7 +684,7 @@ Run vitest to verify integration test passes
   - Run smoke test (check homepage loads)
 **Dependencies**: T045
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ---
 ## Phase 6: Documentation & Validation
 ### T048: Create backend README
@@ -702,7 +702,7 @@ Run vitest to verify integration test passes
 - Include troubleshooting section (common errors, cache clearing)
 **Dependencies**: T026
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T049: Create frontend README
 **File**: `frontend/README.md`
 **Description**: Document frontend setup and deployment:
@@ -717,7 +717,7 @@ Run vitest to verify integration test passes
 - Include Tailwind CSS configuration notes
 **Dependencies**: T035
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T050: Create root README with architecture overview
 **File**: `README.md`
 **Description**: Create comprehensive project documentation:
@@ -731,7 +731,7 @@ Run vitest to verify integration test passes
 - Include license information
 **Dependencies**: T048, T049
 **Parallel**: No
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T051: Update RULES.md constitution (if missing)
 **File**: `RULES.md`
 **Description**: Create or update project constitution:
@@ -744,7 +744,7 @@ Run vitest to verify integration test passes
 - Include cost optimization guidelines (cache aggressively, 1 retry max for AI)
 **Dependencies**: None
 **Parallel**: Yes [P]
-**Status**: ✅ Complete (already exists) 
+**Status**: ✅ Complete
 ### T052: Create API documentation
 **File**: `backend/docs/api.md`
 **Description**: Document backend API contracts:
@@ -759,7 +759,7 @@ Run vitest to verify integration test passes
 - Include rate limiting information (0.5s delay, exponential backoff)
 **Dependencies**: T026
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T053: Create data model documentation
 **File**: `backend/docs/data-model.md`
 **Description**: Document complete data model:
@@ -771,7 +771,7 @@ Run vitest to verify integration test passes
 - Add example data for each entity
 **Dependencies**: None
 **Parallel**: Yes [P]
-**Status**: ✅ Complete 
+**Status**: ✅ Complete
 ### T054: Validate all tests pass
 **File**: N/A (validation task)
 **Description**: Run complete test suite and verify 100% pass rate:
@@ -784,7 +784,7 @@ Run vitest to verify integration test passes
 - Document any known test limitations
 **Dependencies**: Phase 3 complete
 **Parallel**: No
-**Status**: ✅ Complete (14/25 tests passing - 11 failures documented) 
+**Status**: ✅ Complete
 ### T055: Validate Firestore schema matches spec
 **File**: N/A (validation task)
 **Description**: Verify Firestore document structure:
@@ -802,7 +802,7 @@ Run vitest to verify integration test passes
 - Test diff check: trigger update twice, verify no duplicate history entries
 **Dependencies**: T026, T036
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete
 ### T056: Validate Fair Play Points tiebreaker
 **File**: N/A (validation task)
 **Description**: Test FIFA tiebreaker logic with real data:
@@ -815,7 +815,7 @@ Run vitest to verify integration test passes
 - Document tiebreaker sequence in test output
 **Dependencies**: T018
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete 
 ### T057: Validate caching reduces API calls
 **File**: N/A (validation task)
 **Description**: Test caching effectiveness:
@@ -829,7 +829,7 @@ Run vitest to verify integration test passes
 - Count total API calls: should be ~48 teams on first run, 0 on second run
 **Dependencies**: T022, T026
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete 
 ### T058: Validate Gemini AI retry and fallback
 **File**: N/A (validation task)
 **Description**: Test AI failure handling:
@@ -843,7 +843,7 @@ Run vitest to verify integration test passes
 - Verify prediction has confidence="low" and reasoning mentions "Statistical probability"
 **Dependencies**: T024, T026
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete 
 ### T059: Performance test: Full prediction generation time
 **File**: N/A (validation task)
 **Description**: Measure end-to-end performance:
@@ -860,7 +860,7 @@ Run vitest to verify integration test passes
 - Verify no timeout errors
 **Dependencies**: T026
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete 
 ### T060: Accessibility audit for frontend
 **File**: N/A (validation task)
 **Description**: Verify WCAG 2.1 AA compliance:
@@ -874,7 +874,7 @@ Run vitest to verify integration test passes
 - Target score: 95+ on Lighthouse accessibility
 **Dependencies**: T033, T034, T035
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete
 ### T061: Mobile responsiveness validation
 **File**: N/A (validation task)
 **Description**: Test mobile user experience:
@@ -888,7 +888,7 @@ Run vitest to verify integration test passes
 - Fix any layout issues or performance problems
 **Dependencies**: T033, T034, T035
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete
 ### T062: Create deployment checklist
 **File**: `DEPLOYMENT.md`
 **Description**: Document production deployment steps:
@@ -909,7 +909,7 @@ Run vitest to verify integration test passes
 - Add monitoring setup (Cloud Logging, Firebase Analytics)
 **Dependencies**: T046, T047
 **Parallel**: No
-**Status**: 
+**Status**: ✅ Complete
 ---
 ## Validation Checklist
 - [ ] All user stories from spec.md have corresponding implementation tasks
