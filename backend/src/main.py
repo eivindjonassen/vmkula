@@ -771,23 +771,13 @@ def update_predictions() -> Dict[str, Any]:
                     "Recalculating favorites and dark horses from AI predictions"
                 )
 
-                # Debug: Log prediction structure
-                logger.info(f"Total predictions: {len(predictions)}")
-                if predictions:
-                    sample_pred = predictions[0]
-                    logger.info(f"Sample prediction keys: {list(sample_pred.keys())}")
-                    logger.info(f"Sample prediction: {sample_pred}")
-
-                # Extract group stage predictions (stage_id = 1)
-                group_predictions = [p for p in predictions if p.get("stage_id") == 1]
-                logger.info(
-                    f"Group stage predictions (stage_id=1): {len(group_predictions)}"
-                )
-
                 # Calculate team win probabilities across all group matches
+                # Note: stage_id is in matches, not in predictions
                 team_win_prob = {}
-                for pred in group_predictions:
-                    # Find the team names from matches
+                group_stage_count = 0
+
+                for pred in predictions:
+                    # Find the match data to get stage_id
                     match_id = pred.get("match_id")
                     match_data = next(
                         (
@@ -798,7 +788,9 @@ def update_predictions() -> Dict[str, Any]:
                         None,
                     )
 
-                    if match_data:
+                    # Only process group stage matches (stage_id = 1)
+                    if match_data and match_data.get("stage_id") == 1:
+                        group_stage_count += 1
                         winner = pred.get("winner", "")
                         win_prob = pred.get("win_probability", 0.5)
 
@@ -808,6 +800,9 @@ def update_predictions() -> Dict[str, Any]:
                                 team_win_prob[winner] = {"total_prob": 0, "count": 0}
                             team_win_prob[winner]["total_prob"] += win_prob
                             team_win_prob[winner]["count"] += 1
+
+                logger.info(f"Processed {group_stage_count} group stage predictions")
+                logger.info(f"Teams with win probabilities: {len(team_win_prob)}")
 
                 # Calculate average win probability for each team
                 team_avg_prob = {
