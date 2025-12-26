@@ -13,6 +13,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { fetchLatestPredictions } from '../../lib/firestore'
 import type { TournamentSnapshot } from '../../lib/types'
 import BracketView from '../../components/BracketView'
@@ -26,6 +27,26 @@ export default function BracketPage() {
   useEffect(() => {
     loadPredictions()
   }, [])
+
+  // Keyboard shortcuts for zoom controls
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '+') {
+        e.preventDefault()
+        handleZoomIn()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault()
+        handleZoomOut()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        e.preventDefault()
+        handleResetZoom()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [zoomLevel])
 
   const loadPredictions = async () => {
     setLoading(true)
@@ -75,12 +96,13 @@ export default function BracketPage() {
                 Tournament progression from Round of 32 to Final
               </p>
             </div>
-            <a
+            <Link
               href="/"
-              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+              className="px-4 py-2 min-h-[44px] flex items-center bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors focus:ring-4 focus:ring-slate-300 focus:outline-none"
+              aria-label="Tilbake til hjemmesiden"
             >
               ← Back to Home
-            </a>
+            </Link>
           </div>
 
           {/* Zoom Controls */}
@@ -90,23 +112,26 @@ export default function BracketPage() {
               <button
                 onClick={handleZoomOut}
                 disabled={zoomLevel <= 50}
-                className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:ring-4 focus:ring-slate-300 focus:outline-none"
+                aria-label="Zoom ut"
               >
                 -
               </button>
-              <span className="text-sm font-bold text-blue-600 w-12 text-center">
+              <span className="text-sm font-bold text-blue-600 w-12 text-center" aria-live="polite">
                 {zoomLevel}%
               </span>
               <button
                 onClick={handleZoomIn}
                 disabled={zoomLevel >= 150}
-                className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:ring-4 focus:ring-slate-300 focus:outline-none"
+                aria-label="Zoom inn"
               >
                 +
               </button>
               <button
                 onClick={handleResetZoom}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 min-h-[44px] bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors focus:ring-4 focus:ring-blue-300 focus:outline-none"
+                aria-label="Tilbakestill zoom"
               >
                 Reset
               </button>
@@ -117,11 +142,30 @@ export default function BracketPage() {
 
       {/* Main Content */}
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Loading State */}
+        {/* Loading State - Skeleton Screens */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mb-4"></div>
-            <p className="text-slate-600 font-medium">Loading bracket...</p>
+          <div className="space-y-8">
+            {/* Predicted winner banner skeleton */}
+            <div className="bg-slate-200 rounded-3xl p-8 animate-pulse">
+              <div className="h-6 bg-slate-300 rounded w-48 mx-auto mb-4" />
+              <div className="h-12 bg-slate-300 rounded w-64 mx-auto mb-2" />
+              <div className="h-4 bg-slate-300 rounded w-96 mx-auto" />
+            </div>
+            
+            {/* Bracket skeleton */}
+            <div className="flex gap-8 overflow-hidden">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex flex-col gap-6 w-80 flex-shrink-0">
+                  <div className="h-8 bg-slate-200 rounded w-32 mx-auto animate-pulse" />
+                  {[1, 2].map((j) => (
+                    <div key={j} className="bg-white rounded-2xl border-2 border-slate-100 p-6 animate-pulse">
+                      <div className="h-4 bg-slate-200 rounded mb-4" />
+                      <div className="h-20 bg-slate-100 rounded" />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -132,7 +176,8 @@ export default function BracketPage() {
             <p className="text-red-500 text-sm mb-4">{error}</p>
             <button
               onClick={loadPredictions}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+              className="px-4 py-2 min-h-[44px] bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors focus:ring-4 focus:ring-red-300 focus:outline-none"
+              aria-label="Prøv å laste inn bracket på nytt"
             >
               Try Again
             </button>

@@ -12,12 +12,16 @@ import { useTranslations } from 'next-intl'
 
 export default function ConnectionStatus() {
   const t = useTranslations('common')
-  const [isOnline, setIsOnline] = useState(true)
+  const [isOnline, setIsOnline] = useState(() => 
+    typeof window !== 'undefined' ? navigator.onLine : true
+  )
   const [showOffline, setShowOffline] = useState(false)
 
   useEffect(() => {
-    // Initial state
-    setIsOnline(navigator.onLine)
+    // Sync with current online status if it changed during mount
+    if (navigator.onLine !== isOnline) {
+      setIsOnline(navigator.onLine)
+    }
 
     // Event handlers
     const handleOnline = () => {

@@ -13,6 +13,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import { fetchLatestPredictions } from '../../lib/firestore'
 import type { TournamentSnapshot, Match } from '../../lib/types'
 import MatchCard from '../../components/MatchCard'
@@ -111,12 +112,13 @@ export default function MatchesPage() {
               <h1 className="text-3xl font-black tracking-tight text-slate-900">Match Schedule</h1>
               <p className="text-sm text-slate-600 mt-1">All 104 matches with AI predictions</p>
             </div>
-            <a
+            <Link
               href="/"
-              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+              className="px-4 py-2 min-h-[44px] flex items-center bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors focus:ring-4 focus:ring-slate-300 focus:outline-none"
+              aria-label="Tilbake til hjemmesiden"
             >
               ← Back to Home
-            </a>
+            </Link>
           </div>
 
           {/* Filters */}
@@ -126,11 +128,13 @@ export default function MatchesPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setSelectedStage('all')}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`px-4 py-2 min-h-[44px] rounded-lg text-sm font-semibold transition-colors focus:ring-4 focus:outline-none ${
                     selectedStage === 'all'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      ? 'bg-blue-600 text-white focus:ring-blue-300'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-slate-300'
                   }`}
+                  aria-pressed={selectedStage === 'all'}
+                  aria-label="Vis alle stadier"
                 >
                   All Stages
                 </button>
@@ -138,11 +142,13 @@ export default function MatchesPage() {
                   <button
                     key={id}
                     onClick={() => setSelectedStage(Number(id))}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    className={`px-4 py-2 min-h-[44px] rounded-lg text-sm font-semibold transition-colors focus:ring-4 focus:outline-none ${
                       selectedStage === Number(id)
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        ? 'bg-blue-600 text-white focus:ring-blue-300'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-slate-300'
                     }`}
+                    aria-pressed={selectedStage === Number(id)}
+                    aria-label={`Filter til ${name}`}
                   >
                     {name}
                   </button>
@@ -157,6 +163,7 @@ export default function MatchesPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full px-4 py-3 pl-12 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  aria-label="Søk etter lag"
                 />
                 <svg
                   className="absolute left-4 top-3.5 h-5 w-5 text-slate-400"
@@ -174,9 +181,11 @@ export default function MatchesPage() {
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+                    className="absolute right-2 top-2 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 focus:ring-4 focus:ring-blue-300 focus:outline-none transition-colors"
+                    aria-label="Tøm søk"
+                    type="button"
                   >
-                    ✕
+                    <span aria-hidden="true">✕</span>
                   </button>
                 )}
               </div>
@@ -192,11 +201,40 @@ export default function MatchesPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Loading State */}
+        {/* Loading State - Skeleton Screens */}
         {loading && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mb-4"></div>
-            <p className="text-slate-600 font-medium">Loading matches...</p>
+          <div className="space-y-12">
+            {[1, 2, 3].map((i) => (
+              <div key={i}>
+                {/* Date header skeleton */}
+                <div className="sticky top-24 z-40 mb-6 flex justify-center">
+                  <div className="h-10 w-48 bg-slate-200 rounded-full animate-pulse" />
+                </div>
+                
+                {/* Match cards skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[1, 2].map((j) => (
+                    <div key={j} className="bg-white rounded-2xl border-2 border-slate-100 overflow-hidden">
+                      {/* Header skeleton */}
+                      <div className="bg-slate-200 px-6 py-4 animate-pulse">
+                        <div className="h-4 bg-slate-300 rounded w-24 mb-2" />
+                        <div className="h-5 bg-slate-300 rounded w-32" />
+                      </div>
+                      
+                      {/* Content skeleton */}
+                      <div className="px-6 py-4">
+                        <div className="grid grid-cols-3 gap-4 items-center mb-4">
+                          <div className="h-6 bg-slate-200 rounded animate-pulse" />
+                          <div className="h-4 bg-slate-200 rounded animate-pulse" />
+                          <div className="h-6 bg-slate-200 rounded animate-pulse" />
+                        </div>
+                        <div className="h-20 bg-slate-100 rounded animate-pulse" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -207,7 +245,8 @@ export default function MatchesPage() {
             <p className="text-red-500 text-sm mb-4">{error}</p>
             <button
               onClick={loadPredictions}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+              className="px-4 py-2 min-h-[44px] bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors focus:ring-4 focus:ring-red-300 focus:outline-none"
+              aria-label="Prøv å laste inn kamper på nytt"
             >
               Try Again
             </button>

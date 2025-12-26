@@ -12,20 +12,21 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { fetchLatestPredictions } from '../lib/firestore'
-import type { TournamentSnapshot } from '../lib/types'
+import type { TournamentSnapshot, Match } from '../lib/types'
 import GroupCard from '../components/GroupCard'
 import MatchCard from '../components/MatchCard'
 import BracketView from '../components/BracketView'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ConnectionStatus from '../components/ConnectionStatus'
+import { getFavoriteTeams } from '../lib/favorites'
 
-type Tab = 'groups' | 'matches' | 'bracket'
+type Tab = 'favorites' | 'groups' | 'matches' | 'bracket'
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const t = useTranslations('home')
@@ -39,11 +40,39 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [favoriteTeams, setFavoriteTeams] = useState<string[]>([])
+
+  // Load favorite teams on mount and listen for changes
+  useEffect(() => {
+    const loadFavorites = () => {
+      setFavoriteTeams(getFavoriteTeams())
+    }
+    
+    loadFavorites()
+    
+    // Listen for storage changes (favorites updated in other tabs/components)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'vmkula_favorite_teams') {
+        loadFavorites()
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Also set up a custom event for same-tab updates
+    const handleFavoritesUpdate = () => loadFavorites()
+    window.addEventListener('favoritesUpdated', handleFavoritesUpdate)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('favoritesUpdated', handleFavoritesUpdate)
+    }
+  }, [])
 
   // Sync tab with URL on mount and when URL changes
   useEffect(() => {
-    const tab = (searchParams.get('tab') as Tab) || 'groups'
-    if (['groups', 'matches', 'bracket'].includes(tab)) {
+    const tab = (searchParams.get('tab') as Tab) || 'favorites'
+    if (['favorites', 'groups', 'matches', 'bracket'].includes(tab)) {
       setActiveTab(tab)
     }
   }, [searchParams])
@@ -104,6 +133,38 @@ export default function Home() {
     })
   }
 
+  // Get favorite team matches (both group stage and knockout)
+  const favoriteMatches = useMemo(() => {
+    if (!snapshot || favoriteTeams.length === 0) return []
+    
+    const allMatches = [...snapshot.matches, ...snapshot.bracket]
+    
+    return allMatches.filter(match => {
+      const homeTeam = match.homeTeamName || ''
+      const awayTeam = match.awayTeamName || ''
+      
+      return favoriteTeams.some(fav => 
+        homeTeam.includes(fav) || awayTeam.includes(fav) || fav.includes(homeTeam) || fav.includes(awayTeam)
+      )
+    }).sort((a, b) => {
+      // Sort by kickoff time
+      const dateA = new Date(a.kickoff).getTime()
+      const dateB = new Date(b.kickoff).getTime()
+      return dateA - dateB
+    })
+  }, [snapshot, favoriteTeams])
+
+  // Get groups that contain favorite teams
+  const favoriteTeamGroups = useMemo(() => {
+    if (!snapshot || favoriteTeams.length === 0) return []
+    
+    return Object.entries(snapshot.groups)
+      .filter(([_, group]) => 
+        group.teams.some(team => favoriteTeams.includes(team.name))
+      )
+      .sort(([a], [b]) => a.localeCompare(b))
+  }, [snapshot, favoriteTeams])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50">
       {/* Connection Status Indicator */}
@@ -153,19 +214,29 @@ export default function Home() {
             </div>
 
             {/* Tab Navigation - Mobile Optimized (Touch Friendly) */}
-            <nav className="w-full sm:w-auto flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-md">
-              {(['groups', 'matches', 'bracket'] as Tab[]).map((tab, index) => (
+            <nav className="w-full sm:w-auto flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-md overflow-x-auto" role="tablist" aria-label="Turneringsvisninger">
+              {(['favorites', 'groups', 'matches', 'bracket'] as Tab[]).map((tab, index) => (
                 <button
                   key={tab}
                   onClick={() => handleTabChange(tab)}
-                  className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 sm:py-2.5 rounded-xl text-xs sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-300 min-h-[44px] sm:min-h-0 ${
+                  className={`flex-1 sm:flex-none px-4 sm:px-6 py-3 sm:py-2.5 rounded-xl text-xs sm:text-[11px] font-bold uppercase tracking-wider transition-all duration-300 min-h-[44px] sm:min-h-0 focus:ring-4 focus:outline-none whitespace-nowrap ${
                     activeTab === tab
-                      ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30'
-                      : 'text-slate-600 hover:text-emerald-600 hover:bg-white'
+                      ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 focus:ring-emerald-300'
+                      : 'text-slate-600 hover:text-emerald-600 hover:bg-white focus:ring-slate-300'
                   }`}
                   style={{ animationDelay: `${index * 100}ms` }}
+                  role="tab"
+                  aria-selected={activeTab === tab}
+                  aria-controls={`${tab}-panel`}
+                  id={`${tab}-tab`}
                 >
-                  {tab === 'groups' ? `⚽ ${tNav('groups')}` : tab === 'matches' ? `📊 ${tNav('matches')}` : `🏆 ${tNav('bracket')}`}
+                  {tab === 'favorites' 
+                    ? `⭐ ${tNav('favorites')}` 
+                    : tab === 'groups' 
+                    ? `⚽ ${tNav('groups')}` 
+                    : tab === 'matches' 
+                    ? `📊 ${tNav('matches')}` 
+                    : `🏆 ${tNav('bracket')}`}
                 </button>
               ))}
             </nav>
@@ -180,7 +251,8 @@ export default function Home() {
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-emerald-500/30 hover:scale-105 transform min-h-[44px] sm:min-h-0"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-emerald-500/30 hover:scale-105 transform min-h-[44px] sm:min-h-0 focus:ring-4 focus:ring-emerald-300 focus:outline-none"
+                aria-label={refreshing ? 'Oppdaterer turneringsdata' : 'Oppdater turneringsdata'}
               >
                 {refreshing ? `🔄 ${tCommon('refreshing')}...` : `🔄 ${t('refreshTournament')}`}
               </button>
@@ -204,7 +276,8 @@ export default function Home() {
             <p className="text-red-700 text-sm sm:text-base mb-6">{error}</p>
             <button
               onClick={loadPredictions}
-              className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-lg hover:scale-105 transform min-h-[44px]"
+              className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:from-red-600 hover:to-red-700 transition-all duration-300 shadow-lg hover:scale-105 transform min-h-[44px] focus:ring-4 focus:ring-red-300 focus:outline-none"
+              aria-label="Prøv å laste inn turneringsdata på nytt"
             >
               {tCommon('tryAgain')}
             </button>
@@ -214,9 +287,110 @@ export default function Home() {
         {/* Content */}
         {snapshot && !loading && (
           <>
+            {/* Favorites Tab */}
+            {activeTab === 'favorites' && (
+              <div className="space-y-6 sm:space-y-8 animate-fadeIn" role="tabpanel" id="favorites-panel" aria-labelledby="favorites-tab">
+                {favoriteTeams.length === 0 ? (
+                  /* Empty State */
+                  <div className="max-w-2xl mx-auto">
+                    <div className="p-12 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl border-2 border-slate-200 text-center">
+                      <span className="text-6xl mb-4 block">⭐</span>
+                      <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mb-3">
+                        Ingen favorittlag ennå
+                      </h2>
+                      <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                        Klikk på stjerneikonet i gruppetabellene for å følge dine favorittlag og se alle deres kamper her
+                      </p>
+                      <button
+                        onClick={() => handleTabChange('groups')}
+                        className="px-6 py-3 min-h-[44px] bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-lg focus:ring-4 focus:ring-emerald-300 focus:outline-none"
+                      >
+                        Gå til grupper →
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Favorites Content */
+                  <>
+                    {/* Header */}
+                    <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-3xl border-2 border-yellow-300 shadow-lg p-6 sm:p-8">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <div className="flex items-center gap-3">
+                          <span className="text-4xl">⭐</span>
+                          <div>
+                            <h2 className="text-2xl sm:text-3xl font-black text-amber-800">
+                              Mine Favorittlag
+                            </h2>
+                            <p className="text-sm text-amber-700">
+                              {favoriteMatches.length} {favoriteMatches.length === 1 ? 'kamp' : 'kamper'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Favorite Teams List */}
+                      <div className="flex flex-wrap gap-3">
+                        {favoriteTeams.map((team) => {
+                          const teamMatches = favoriteMatches.filter(m => 
+                            m.homeTeamName?.includes(team) || m.awayTeamName?.includes(team)
+                          )
+                          return (
+                            <div
+                              key={team}
+                              className="px-4 py-3 bg-white rounded-xl font-semibold border-2 border-amber-300 shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-2xl" aria-hidden="true">{require('../lib/countryFlags').getCountryFlag(team)}</span>
+                                <span className="text-amber-900 font-bold">{team}</span>
+                              </div>
+                              <div className="text-xs text-amber-700">
+                                {teamMatches.length} {teamMatches.length === 1 ? 'kamp' : 'kamper'}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Group Standings for Favorite Teams */}
+                    {favoriteTeamGroups.length > 0 && (
+                      <div>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                          <span>📊</span>
+                          Gruppetabeller
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                          {favoriteTeamGroups.map(([letter, group], index) => (
+                            <div key={letter} className="animate-slideIn" style={{ animationDelay: `${index * 50}ms` }}>
+                              <GroupCard group={group} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* All Favorite Matches */}
+                    <div>
+                      <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <span>📅</span>
+                        Alle kamper
+                      </h3>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        {favoriteMatches.map((match, index) => (
+                          <div key={match.id} className="animate-slideIn" style={{ animationDelay: `${index * 30}ms` }}>
+                            <MatchCard match={match} prediction={match.prediction} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Groups Tab */}
             {activeTab === 'groups' && (
-              <div className="space-y-6 sm:space-y-8 animate-fadeIn">
+              <div className="space-y-6 sm:space-y-8 animate-fadeIn" role="tabpanel" id="groups-panel" aria-labelledby="groups-tab">
                 {/* AI Summary - Enhanced Visual Design */}
                 <div className="relative overflow-hidden bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 border-2 border-emerald-200 shadow-xl">
                   {/* Decorative Elements */}
@@ -292,7 +466,7 @@ export default function Home() {
 
             {/* Matches Tab */}
             {activeTab === 'matches' && (
-              <div className="space-y-6 animate-fadeIn">
+              <div className="space-y-6 animate-fadeIn" role="tabpanel" id="matches-panel" aria-labelledby="matches-tab">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                   <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-800 flex items-center gap-2">
                     <span>📊</span> {t('groupStageMatches')}
@@ -313,7 +487,7 @@ export default function Home() {
 
             {/* Bracket Tab */}
             {activeTab === 'bracket' && (
-              <div className="space-y-6 sm:space-y-8 animate-fadeIn">
+              <div className="space-y-6 sm:space-y-8 animate-fadeIn" role="tabpanel" id="bracket-panel" aria-labelledby="bracket-tab">
                 <div className="text-center">
                   <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-emerald-800 mb-2 flex items-center justify-center gap-3">
                     <span>🏆</span> {tNav('bracket')}
@@ -414,5 +588,13 @@ export default function Home() {
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <HomeContent />
+    </Suspense>
   )
 }

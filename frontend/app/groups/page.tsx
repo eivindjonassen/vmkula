@@ -12,6 +12,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { fetchLatestPredictions } from '../../lib/firestore'
 import type { TournamentSnapshot, Group } from '../../lib/types'
 import GroupCard from '../../components/GroupCard'
@@ -81,12 +82,13 @@ export default function GroupsPage() {
               <h1 className="text-3xl font-black tracking-tight text-slate-900">Group Standings</h1>
               <p className="text-sm text-slate-600 mt-1">World Cup 2026 - All 12 Groups</p>
             </div>
-            <a
+            <Link
               href="/"
-              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+              className="px-4 py-2 min-h-[44px] flex items-center bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors focus:ring-4 focus:ring-slate-300 focus:outline-none"
+              aria-label="Tilbake til hjemmesiden"
             >
               ← Back to Home
-            </a>
+            </Link>
           </div>
 
           {/* Filter Buttons */}
@@ -94,11 +96,13 @@ export default function GroupsPage() {
             <div className="mt-6 flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedGroup(null)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                className={`px-4 py-2 min-h-[44px] rounded-lg text-sm font-semibold transition-colors focus:ring-4 focus:outline-none ${
                   selectedGroup === null
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    ? 'bg-blue-600 text-white focus:ring-blue-300'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-slate-300'
                 }`}
+                aria-pressed={selectedGroup === null}
+                aria-label="Vis alle grupper"
               >
                 All Groups
               </button>
@@ -106,11 +110,13 @@ export default function GroupsPage() {
                 <button
                   key={letter}
                   onClick={() => setSelectedGroup(letter)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`px-4 py-2 min-h-[44px] rounded-lg text-sm font-semibold transition-colors focus:ring-4 focus:outline-none ${
                     selectedGroup === letter
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      ? 'bg-blue-600 text-white focus:ring-blue-300'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-slate-300'
                   }`}
+                  aria-pressed={selectedGroup === letter}
+                  aria-label={`Vis gruppe ${letter}`}
                 >
                   Group {letter}
                 </button>
@@ -146,7 +152,8 @@ export default function GroupsPage() {
             <p className="text-red-500 text-sm mb-4">{error}</p>
             <button
               onClick={loadPredictions}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+              className="px-4 py-2 min-h-[44px] bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors focus:ring-4 focus:ring-red-300 focus:outline-none"
+              aria-label="Prøv å laste inn grupper på nytt"
             >
               Try Again
             </button>
