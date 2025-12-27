@@ -183,18 +183,37 @@ class AIAgent:
         away = matchup["away_team"]
         api_prediction = matchup.get("api_football_prediction")
 
+        # Build FIFA ranking lines if available
+        home_fifa = ""
+        if home.get("fifa_ranking"):
+            home_fifa = f"\n- FIFA-rangering: #{home['fifa_ranking']}"
+            if home.get("fifa_points"):
+                home_fifa += f" ({home['fifa_points']:.2f} poeng"
+                if home.get("fifa_confederation"):
+                    home_fifa += f", {home['fifa_confederation']}"
+                home_fifa += ")"
+        
+        away_fifa = ""
+        if away.get("fifa_ranking"):
+            away_fifa = f"\n- FIFA-rangering: #{away['fifa_ranking']}"
+            if away.get("fifa_points"):
+                away_fifa += f" ({away['fifa_points']:.2f} poeng"
+                if away.get("fifa_confederation"):
+                    away_fifa += f", {away['fifa_confederation']}"
+                away_fifa += ")"
+        
         # Build prompt with aggregated statistics (in Norwegian)
         prompt = f"""Spå resultatet av denne VM 2026-kampen:
 
 Hjemmelag: {home["name"]}
 - Gjennomsnittlig xG: {home.get("avg_xg", "N/A")}
 - Nullet motstanderen: {home.get("clean_sheets", 0)}
-- Siste form: {home.get("form_string", "Ukjent")}
+- Siste form: {home.get("form_string", "Ukjent")}{home_fifa}
 
 Bortelag: {away["name"]}
 - Gjennomsnittlig xG: {away.get("avg_xg", "N/A")}
 - Nullet motstanderen: {away.get("clean_sheets", 0)}
-- Siste form: {away.get("form_string", "Ukjent")}"""
+- Siste form: {away.get("form_string", "Ukjent")}{away_fifa}"""
 
         # Add API-Football prediction data if available
         if api_prediction:
