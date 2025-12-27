@@ -248,7 +248,8 @@ function transformGroups(firestoreGroups: Record<string, any[]>): Record<string,
           points: team.points || 0,
           rank: team.rank,
           predictedPlacement: team.predicted_placement,
-          predictedRank: team.predicted_rank,
+          predictedRank: team.predicted_rank,  // AI predicted final rank (1-4)
+          hasRealData: team.has_real_data,
         }
       }),
     }

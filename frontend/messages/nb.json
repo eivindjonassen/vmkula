@@ -62,7 +62,13 @@
     "qualified": "Avansement",
     "possibleQualifier": "Mulig avansement",
     "qualifiedBadge": "Avansement (1-2 plass)",
-    "possibleQualifierBadge": "Mulig avansement (3. plass)"
+    "possibleQualifierBadge": "Mulig avansement (3. plass)",
+    "aiPrediction": "AI-spådom",
+    "aiPredictedRank": "AI spår plass {rank}",
+    "liveData": "Live Data",
+    "liveDataTooltip": "Data hentet fra API-Football",
+    "aiPredictions": "AI-Spådommer",
+    "aiPredictionsTooltip": "Spådommer fra Gemini AI"
   },
   "matchCard": {
     "match": "Kamp",
@@ -75,6 +81,7 @@
     "confidenceMedium": "MEDIUM",
     "confidenceLow": "LAV",
     "aiAnalysis": "AI-Analyse",
+    "aiPredicts": "AI spår",
     "predictionPending": "Spådom venter...",
     "tbdNotice": "Lag avgjøres etter gruppespillet",
     "updated": "Oppdatert"

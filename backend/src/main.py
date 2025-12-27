@@ -155,7 +155,7 @@ def update_tournament() -> Dict[str, Any]:
         teams_data = fs_manager.get_all_teams()
 
         # Convert to Team dataclass for compatibility with existing code
-        from src.db_manager import Team as TeamDataclass
+        from src.types import Team as TeamDataclass
 
         teams = [
             TeamDataclass(
@@ -175,7 +175,7 @@ def update_tournament() -> Dict[str, Any]:
         matches_data = fs_manager.get_all_matches()
 
         # Convert to Match dataclass for compatibility
-        from src.db_manager import Match as MatchDataclass
+        from src.types import Match as MatchDataclass
 
         all_matches = [
             MatchDataclass(
@@ -477,7 +477,7 @@ def update_predictions() -> Dict[str, Any]:
         teams_data = fs_manager.get_all_teams()
 
         # Convert to Team dataclass for compatibility
-        from src.db_manager import Team as TeamDataclass
+        from src.types import Team as TeamDataclass
 
         teams = [
             TeamDataclass(
@@ -495,7 +495,7 @@ def update_predictions() -> Dict[str, Any]:
         matches_data = fs_manager.get_all_matches()
 
         # Convert to Match dataclass for compatibility
-        from src.db_manager import Match as MatchDataclass
+        from src.types import Match as MatchDataclass
 
         all_matches = [
             MatchDataclass(
@@ -829,6 +829,76 @@ def update_predictions() -> Dict[str, Any]:
 
                 logger.info(f"Updated favorites: {favorites}")
                 logger.info(f"Updated dark horses: {dark_horses}")
+
+                # Calculate AI predicted standings for each group
+                logger.info("Calculating AI predicted group standings")
+                engine = FifaEngine()
+
+                if "groups" in snapshot:
+                    for group_letter, group_standings in snapshot["groups"].items():
+                        # Get team names in this group
+                        team_names = [s["team_name"] for s in group_standings]
+
+                        # Get all group stage predictions for this group
+                        group_predictions = []
+                        for pred in predictions:
+                            # Find the match data to get team names
+                            match_id = pred.get("match_id")
+                            match_data = next(
+                                (
+                                    m
+                                    for m in snapshot.get("matches", [])
+                                    if m.get("id") == match_id
+                                    and m.get("stage_id") == 1
+                                ),
+                                None,
+                            )
+
+                            if match_data:
+                                home_team = match_data.get("home_team_name")
+                                away_team = match_data.get("away_team_name")
+
+                                # Only include matches for this group
+                                if home_team in team_names and away_team in team_names:
+                                    group_predictions.append(
+                                        {
+                                            "home_team_name": home_team,
+                                            "away_team_name": away_team,
+                                            "predicted_home_score": pred.get(
+                                                "predicted_home_score", 0
+                                            ),
+                                            "predicted_away_score": pred.get(
+                                                "predicted_away_score", 0
+                                            ),
+                                        }
+                                    )
+
+                        # Calculate predicted rankings based on AI predictions
+                        if group_predictions:
+                            predicted_ranks = engine.calculate_predicted_standings(
+                                group_letter=group_letter,
+                                team_names=team_names,
+                                group_predictions=group_predictions,
+                            )
+
+                            # Update each team in the group with predicted_rank
+                            for team_standing in group_standings:
+                                team_name = team_standing["team_name"]
+                                if team_name in predicted_ranks:
+                                    team_standing["predicted_rank"] = predicted_ranks[
+                                        team_name
+                                    ]
+                                    logger.debug(
+                                        f"Group {group_letter}: {team_name} predicted rank = {predicted_ranks[team_name]}"
+                                    )
+
+                            logger.info(
+                                f"Group {group_letter}: Calculated predicted ranks for {len(predicted_ranks)} teams"
+                            )
+                        else:
+                            logger.warning(
+                                f"Group {group_letter}: No predictions found for ranking calculation"
+                            )
 
             else:
                 # No existing tournament data - need to run /api/update-tournament first

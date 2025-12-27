@@ -17,6 +17,7 @@ class GroupStanding:
     goal_difference: int = 0
     points: int = 0
     fair_play_points: int = 0
+    predicted_rank: Optional[int] = None  # AI predicted final ranking
 
 
 @dataclass
@@ -66,9 +67,24 @@ class FifaEngine:
         return standings
 
     def calculate_standings(
-        self, group_letter: str, results: List[Dict], cards: Optional[List[Dict]] = None
+        self,
+        group_letter: str,
+        results: List[Dict],
+        cards: Optional[List[Dict]] = None,
+        predicted_ranks: Optional[Dict[str, int]] = None,
     ) -> List[GroupStanding]:
-        """Calculate group standings based on match results and fair play cards."""
+        """
+        Calculate group standings based on match results and fair play cards.
+
+        Args:
+            group_letter: Group letter (A, B, C, etc.)
+            results: List of match results
+            cards: Optional fair play cards data
+            predicted_ranks: Optional AI predicted ranks for tie-breaking
+
+        Returns:
+            Sorted list of GroupStanding objects with ranks assigned
+        """
         standings_dict = {}
 
         # Initialize all teams from results if not already present
@@ -138,12 +154,19 @@ class FifaEngine:
                         + (card_data.get("red", 0) * -4)
                     )
 
-        # Sort based on FIFA criteria
-        sorted_standings = self._sort_standings(list(standings_dict.values()))
+        # Sort based on FIFA criteria (with optional AI tie-breaker)
+        if predicted_ranks:
+            sorted_standings = self._sort_standings_with_ai(
+                list(standings_dict.values()), predicted_ranks
+            )
+        else:
+            sorted_standings = self._sort_standings(list(standings_dict.values()))
 
-        # Assign ranks
+        # Assign ranks and predicted_rank
         for i, s in enumerate(sorted_standings):
             s.rank = i + 1
+            if predicted_ranks and s.team_name in predicted_ranks:
+                s.predicted_rank = predicted_ranks[s.team_name]
 
         return sorted_standings
 
@@ -268,3 +291,105 @@ class FifaEngine:
             logger = logging.getLogger(__name__)
             logger.warning(f"Failed to resolve label '{label}': {e}")
             return "TBD"
+
+    def calculate_predicted_standings(
+        self,
+        group_letter: str,
+        team_names: List[str],
+        group_predictions: List[Dict[str, Any]],
+    ) -> Dict[str, int]:
+        """
+        Calculate predicted group standings based on AI match predictions.
+
+        Uses AI predictions to simulate match outcomes and calculate final standings.
+        This is used for:
+        1. Displaying AI predicted rank icons in group tables
+        2. Tie-breaking when teams have equal points from played matches
+
+        Args:
+            group_letter: Group letter (A, B, C, etc.)
+            team_names: List of team names in the group
+            group_predictions: List of prediction dicts with:
+                - home_team_name: str
+                - away_team_name: str
+                - predicted_home_score: int
+                - predicted_away_score: int
+
+        Returns:
+            Dictionary mapping team_name -> predicted_rank (1-4)
+        """
+        # Simulate standings based on predictions
+        simulated_results = []
+
+        for pred in group_predictions:
+            home_team = pred.get("home_team_name")
+            away_team = pred.get("away_team_name")
+            home_score = pred.get("predicted_home_score", 0)
+            away_score = pred.get("predicted_away_score", 0)
+
+            # Only include matches for this group
+            if home_team in team_names and away_team in team_names:
+                simulated_results.append(
+                    {
+                        "home_team": home_team,
+                        "away_team": away_team,
+                        "home_score": home_score,
+                        "away_score": away_score,
+                    }
+                )
+
+        # Calculate standings from simulated results
+        if not simulated_results:
+            # No predictions available, return empty dict
+            return {}
+
+        predicted_standings = self.calculate_standings(
+            group_letter=group_letter,
+            results=simulated_results,
+            cards=None,
+        )
+
+        # Return mapping of team_name -> predicted_rank
+        return {standing.team_name: standing.rank for standing in predicted_standings}
+
+    def _sort_standings_with_ai(
+        self,
+        standings: List[GroupStanding],
+        predicted_ranks: Optional[Dict[str, int]] = None,
+    ) -> List[GroupStanding]:
+        """
+        Sort standings with AI predictions as tie-breaker.
+
+        Sorting criteria (in order):
+        1. Points (descending)
+        2. Goal difference (descending)
+        3. Goals for (descending)
+        4. Fair play points (descending - 0 > -1 > -4)
+        5. AI predicted rank (ascending - 1 > 2 > 3 > 4) [NEW]
+        6. Deterministic hash (final fallback)
+
+        Args:
+            standings: List of GroupStanding objects
+            predicted_ranks: Optional dict mapping team_name -> predicted_rank
+
+        Returns:
+            Sorted list of GroupStanding objects
+        """
+
+        def sort_key(s: GroupStanding):
+            # Deterministic hash for final fallback
+            team_hash = int(hashlib.md5(s.team_name.encode()).hexdigest(), 16)
+
+            # AI predicted rank (lower is better: 1 > 2 > 3 > 4)
+            ai_rank = predicted_ranks.get(s.team_name, 999) if predicted_ranks else 999
+
+            return (
+                -s.points,
+                -s.goal_difference,
+                -s.goals_for,
+                -s.fair_play_points,
+                ai_rank,  # AI prediction as tie-breaker before hash
+                team_hash,
+            )
+
+        return sorted(standings, key=sort_key)

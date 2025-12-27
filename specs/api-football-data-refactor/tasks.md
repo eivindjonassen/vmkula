@@ -11,6 +11,7 @@
 
 ### T001: Delete legacy migration script
 **File**: `backend/migrate_to_firestore.py`
+**Status**: ✅ Complete
 **Description**: Delete the legacy one-time migration script that references non-existent `db_manager.py`.
 - Remove entire file (no longer needed, migration already complete)
 - Verify no other files import from this script

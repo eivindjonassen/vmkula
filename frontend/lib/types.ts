@@ -20,7 +20,7 @@ export interface TeamStats {
   points: number
   rank?: number
   predictedPlacement?: string
-  predictedRank?: number
+  predictedRank?: number  // AI predicted final rank (1-4) based on match predictions
   hasRealData?: boolean  // True if data from API-Football, false if mock/placeholder
 }
 

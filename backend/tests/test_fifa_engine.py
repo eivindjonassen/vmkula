@@ -383,3 +383,143 @@ def test_resolve_label_fallbacks():
     label = "Final Match"
     resolved = engine._resolve_label(label, {}, {})
     assert resolved == label
+
+
+def test_calculate_predicted_standings():
+    """Test AI predicted standings calculation based on match predictions."""
+    engine = FifaEngine()
+
+    # Group A teams
+    team_names = ["Brazil", "Croatia", "Mexico", "Nigeria"]
+
+    # AI predictions for group matches
+    group_predictions = [
+        # Brazil beats Croatia 2-1
+        {
+            "home_team_name": "Brazil",
+            "away_team_name": "Croatia",
+            "predicted_home_score": 2,
+            "predicted_away_score": 1,
+        },
+        # Brazil beats Mexico 3-0
+        {
+            "home_team_name": "Brazil",
+            "away_team_name": "Mexico",
+            "predicted_home_score": 3,
+            "predicted_away_score": 0,
+        },
+        # Brazil beats Nigeria 2-0
+        {
+            "home_team_name": "Brazil",
+            "away_team_name": "Nigeria",
+            "predicted_home_score": 2,
+            "predicted_away_score": 0,
+        },
+        # Croatia beats Mexico 1-0
+        {
+            "home_team_name": "Croatia",
+            "away_team_name": "Mexico",
+            "predicted_home_score": 1,
+            "predicted_away_score": 0,
+        },
+        # Croatia beats Nigeria 2-1
+        {
+            "home_team_name": "Croatia",
+            "away_team_name": "Nigeria",
+            "predicted_home_score": 2,
+            "predicted_away_score": 1,
+        },
+        # Mexico beats Nigeria 1-0
+        {
+            "home_team_name": "Mexico",
+            "away_team_name": "Nigeria",
+            "predicted_home_score": 1,
+            "predicted_away_score": 0,
+        },
+    ]
+
+    # Calculate predicted standings
+    predicted_ranks = engine.calculate_predicted_standings(
+        group_letter="A",
+        team_names=team_names,
+        group_predictions=group_predictions,
+    )
+
+    # Expected: Brazil (9 pts), Croatia (6 pts), Mexico (3 pts), Nigeria (0 pts)
+    assert predicted_ranks["Brazil"] == 1
+    assert predicted_ranks["Croatia"] == 2
+    assert predicted_ranks["Mexico"] == 3
+    assert predicted_ranks["Nigeria"] == 4
+
+
+def test_sort_standings_with_ai_tiebreaker():
+    """Test that AI predictions are used as tie-breaker when teams have equal points."""
+    engine = FifaEngine()
+
+    # Scenario: All teams have 0 points (no matches played yet)
+    # AI predicts Brazil 1st, Croatia 2nd, Mexico 3rd, Nigeria 4th
+    results = []  # No matches played
+
+    predicted_ranks = {
+        "Brazil": 1,
+        "Croatia": 2,
+        "Mexico": 3,
+        "Nigeria": 4,
+    }
+
+    # Initialize empty standings
+    from src.fifa_engine import GroupStanding
+
+    standings = [
+        GroupStanding(team_name="Nigeria", group_letter="A", rank=0),
+        GroupStanding(team_name="Mexico", group_letter="A", rank=0),
+        GroupStanding(team_name="Croatia", group_letter="A", rank=0),
+        GroupStanding(team_name="Brazil", group_letter="A", rank=0),
+    ]
+
+    # Sort with AI predictions as tie-breaker
+    sorted_standings = engine._sort_standings_with_ai(standings, predicted_ranks)
+
+    # Expected order: Brazil, Croatia, Mexico, Nigeria (by AI prediction)
+    assert sorted_standings[0].team_name == "Brazil"
+    assert sorted_standings[1].team_name == "Croatia"
+    assert sorted_standings[2].team_name == "Mexico"
+    assert sorted_standings[3].team_name == "Nigeria"
+
+
+def test_calculate_standings_with_predicted_ranks():
+    """Test calculate_standings includes predicted_rank when provided."""
+    engine = FifaEngine()
+
+    # One match: Brazil beats Croatia
+    results = [
+        {
+            "home_team": "Brazil",
+            "away_team": "Croatia",
+            "home_score": 2,
+            "away_score": 1,
+        },
+    ]
+
+    # AI predictions for final standings
+    predicted_ranks = {
+        "Brazil": 1,
+        "Croatia": 2,
+    }
+
+    # Calculate standings with AI predictions
+    standings = engine.calculate_standings(
+        group_letter="A",
+        results=results,
+        predicted_ranks=predicted_ranks,
+    )
+
+    teams = {s.team_name: s for s in standings}
+
+    # Check that predicted_rank is set
+    assert teams["Brazil"].predicted_rank == 1
+    assert teams["Croatia"].predicted_rank == 2
+
+    # Check points are still calculated correctly
+    assert teams["Brazil"].points == 3
+    assert teams["Croatia"].points == 0

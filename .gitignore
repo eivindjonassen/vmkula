@@ -62,6 +62,11 @@ htmlcov/
 .stylelintcache
 backend/cache/
 
+# SQLite databases (no longer used - migrated to Firestore)
+*.db
+*.db-journal
+*.db.backup
+
 # Temporary files
 *.tmp
 *.temp

@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import type { Group } from '../lib/types'
 import { translateTeamName } from '../lib/translationUtils'
@@ -41,6 +41,44 @@ export default function GroupCard({ group }: GroupCardProps) {
     setFavorites(updated)
   }
 
+  // Sort teams with AI prediction tie-breaker
+  // When teams have equal points AND all teams have 0 points (no matches played),
+  // use AI predicted rank for sorting
+  const sortedTeams = React.useMemo(() => {
+    const teams = [...group.teams]
+    
+    // Check if all teams have equal points (tie scenario)
+    const allPoints = teams.map(t => t.points)
+    const allEqual = allPoints.every(p => p === allPoints[0])
+    
+    // If all teams have equal points (especially 0 points at start), use AI predictions
+    if (allEqual && teams.every(t => t.predictedRank !== undefined)) {
+      return teams.sort((a, b) => {
+        // Primary: Points (descending)
+        if (b.points !== a.points) return b.points - a.points
+        
+        // Secondary: Goal difference (descending)
+        const gdA = a.goalsFor - a.goalsAgainst
+        const gdB = b.goalsFor - b.goalsAgainst
+        if (gdB !== gdA) return gdB - gdA
+        
+        // Tertiary: Goals for (descending)
+        if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor
+        
+        // Quaternary: AI predicted rank (ascending - 1 is best)
+        if (a.predictedRank && b.predictedRank) {
+          return a.predictedRank - b.predictedRank
+        }
+        
+        // Final: Alphabetical
+        return a.name.localeCompare(b.name)
+      })
+    }
+    
+    // Otherwise use standard FIFA ranking (already sorted from backend)
+    return teams
+  }, [group.teams])
+
   return (
     <div className="bg-white rounded-2xl shadow-lg border-2 border-emerald-200 overflow-hidden hover:shadow-xl transition-shadow duration-300">
       {/* Header */}
@@ -54,23 +92,23 @@ export default function GroupCard({ group }: GroupCardProps) {
           {group.teams.some(team => team.hasRealData) && (
             <span 
               className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold bg-green-900 bg-opacity-30 text-white border border-white border-opacity-30 rounded-full"
-              title="Data hentet fra API-Football"
+              title={t('liveDataTooltip')}
             >
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
-              <span>Live Data</span>
+              <span>{t('liveData')}</span>
             </span>
           )}
           {group.teams.every(team => team.hasRealData === false) && (
             <span 
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold bg-amber-900 bg-opacity-30 text-white border border-white border-opacity-30 rounded-full"
-              title="Testdata - ikke fra API-Football"
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold bg-purple-900 bg-opacity-30 text-white border border-white border-opacity-30 rounded-full"
+              title={t('aiPredictionsTooltip')}
             >
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
               </svg>
-              <span>Test Data</span>
+              <span>{t('aiPredictions')}</span>
             </span>
           )}
         </div>
@@ -114,7 +152,7 @@ export default function GroupCard({ group }: GroupCardProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {group.teams.map((team, index) => {
+            {sortedTeams.map((team, index) => {
               // Determine row styling based on rank
               const isQualifier = index < 2 // Top 2 qualify
               const isThirdPlace = index === 2 // 3rd place might qualify
@@ -141,10 +179,23 @@ export default function GroupCard({ group }: GroupCardProps) {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center space-x-2 flex-1 min-w-0">
                         <span className="text-2xl flex-shrink-0" aria-hidden="true">{team.flag}</span>
-                        <span className="font-medium text-gray-900 truncate">
-                          <span className="sr-only">Lag: </span>
-                          {translateTeamName(team.name)}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900 truncate">
+                            <span className="sr-only">Lag: </span>
+                            {translateTeamName(team.name)}
+                          </span>
+                          {/* AI Prediction Badge */}
+                          {team.predictedRank && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z" />
+                              </svg>
+                              <span className="text-xs font-semibold text-purple-600" title={t('aiPredictedRank', { rank: team.predictedRank })}>
+                                {team.predictedRank}.
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <button
                         onClick={(e) => {
