@@ -22,10 +22,27 @@ from unittest.mock import Mock, patch, MagicMock
 import time
 
 
+# Fixture to mock FirestoreManager before importing FIFARankingScraper
+@pytest.fixture
+def mock_firestore_manager():
+    """Mock FirestoreManager to avoid Google Cloud credential requirements."""
+    with patch('src.fifa_ranking_scraper.FirestoreManager') as mock_fm:
+        mock_manager = MagicMock()
+        mock_fm.return_value = mock_manager
+        yield mock_manager
+
+
+@pytest.fixture
+def scraper(mock_firestore_manager):
+    """Create a FIFARankingScraper instance with mocked FirestoreManager."""
+    from src.fifa_ranking_scraper import FIFARankingScraper
+    return FIFARankingScraper()
+
+
 class TestFIFARankingScraper:
     """Test suite for FIFARankingScraper class."""
 
-    def test_scraper_initialization(self):
+    def test_scraper_initialization(self, scraper):
         """
         Test scraper initialization and configuration constants.
         
@@ -36,10 +53,6 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         # Verify scraper constants
         assert scraper.RANKINGS_URL == "https://inside.fifa.com/fifa-world-ranking/men"
         assert scraper.MIN_DELAY_SECONDS == 2.0
@@ -47,7 +60,7 @@ class TestFIFARankingScraper:
 
     # T006: HTTP Fetching with Retry Logic Tests
     
-    def test_fetch_rankings_page_success(self):
+    def test_fetch_rankings_page_success(self, scraper):
         """
         Test successful HTTP 200 response from FIFA rankings page.
         
@@ -58,10 +71,6 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         # Mock successful HTTP response
         with patch('requests.get') as mock_get:
             mock_response = Mock()
@@ -84,7 +93,7 @@ class TestFIFARankingScraper:
             # Verify HTML returned
             assert html == "<html><body>FIFA Rankings</body></html>"
     
-    def test_fetch_rankings_page_retry_on_failure(self):
+    def test_fetch_rankings_page_retry_on_failure(self, scraper):
         """
         Test retry logic with exponential backoff on transient failures.
         
@@ -98,10 +107,7 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
         from src.exceptions import DataAggregationError
-        
-        scraper = FIFARankingScraper()
         
         # Mock responses: fail twice, then succeed
         with patch('requests.get') as mock_get, \
@@ -137,7 +143,7 @@ class TestFIFARankingScraper:
             # Verify success on 3rd attempt
             assert html == "<html>Rankings</html>"
     
-    def test_fetch_rankings_page_max_retries_exceeded(self):
+    def test_fetch_rankings_page_max_retries_exceeded(self, scraper):
         """
         Test that DataAggregationError raised after max retries exceeded.
         
@@ -149,10 +155,7 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
         from src.exceptions import DataAggregationError
-        
-        scraper = FIFARankingScraper()
         
         # Mock persistent failures
         with patch('requests.get') as mock_get, \
@@ -180,7 +183,7 @@ class TestFIFARankingScraper:
     
     # T007: HTML Parsing Tests
     
-    def test_parse_rankings_table_success(self):
+    def test_parse_rankings_table_success(self, scraper):
         """
         Test successful parsing of FIFA rankings HTML table.
         
@@ -189,10 +192,6 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         # Mock FIFA.com HTML table structure
         mock_html = """
         <html>
@@ -250,7 +249,7 @@ class TestFIFARankingScraper:
         assert france['previous_rank'] == 3
         assert france['rank_change'] == 1
     
-    def test_parse_rankings_handles_missing_data(self):
+    def test_parse_rankings_handles_missing_data(self, scraper):
         """
         Test graceful handling of incomplete HTML data.
         
@@ -261,10 +260,6 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         # Mock incomplete HTML (missing rank_change and previous_rank)
         mock_html = """
         <html>
@@ -305,7 +300,7 @@ class TestFIFARankingScraper:
     
     # T008: Rankings Validation Tests
     
-    def test_validate_rankings_completeness(self):
+    def test_validate_rankings_completeness(self, scraper):
         """
         Test validation of complete FIFA rankings data.
         
@@ -315,10 +310,6 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         # Test complete data (211 teams)
         complete_rankings = [{'rank': i, 'team_name': f'Team{i}'} for i in range(1, 212)]
         is_valid = scraper.validate_completeness(complete_rankings)
@@ -331,7 +322,7 @@ class TestFIFARankingScraper:
     
     # T009: Rate Limiting Tests
     
-    def test_rate_limiting_enforced(self):
+    def test_rate_limiting_enforced(self, scraper):
         """
         Test that 2-second minimum delay enforced between requests.
         
@@ -341,10 +332,6 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         with patch('time.time') as mock_time, \
              patch('time.sleep') as mock_sleep:
             
@@ -369,7 +356,7 @@ class TestFIFARankingScraper:
     
     # T010: Firestore Storage Integration Tests
     
-    def test_scrape_and_store_success(self):
+    def test_scrape_and_store_success(self, scraper, mock_firestore_manager):
         """
         Test complete scrape-and-store workflow.
         
@@ -387,14 +374,9 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         # Mock dependencies
         with patch.object(scraper, 'fetch_rankings_page') as mock_fetch, \
-             patch.object(scraper, 'parse_rankings') as mock_parse, \
-             patch('src.firestore_manager.FirestoreManager') as mock_fm:
+             patch.object(scraper, 'parse_rankings') as mock_parse:
             
             # Mock fetch returns HTML
             mock_fetch.return_value = "<html>Rankings</html>"
@@ -402,10 +384,6 @@ class TestFIFARankingScraper:
             # Mock parse returns 211 teams
             mock_rankings = [{'rank': i, 'team_name': f'Team{i}'} for i in range(1, 212)]
             mock_parse.return_value = mock_rankings
-            
-            # Mock Firestore manager
-            mock_manager = Mock()
-            mock_fm.return_value = mock_manager
             
             # Execute scrape and store
             result = scraper.scrape_and_store()
@@ -417,7 +395,7 @@ class TestFIFARankingScraper:
             mock_parse.assert_called_once_with("<html>Rankings</html>")
             
             # Verify Firestore write called
-            mock_manager.update_fifa_rankings.assert_called_once()
+            mock_firestore_manager.update_fifa_rankings.assert_called_once()
             
             # Verify result structure
             assert result['success'] is True
@@ -430,7 +408,7 @@ class TestFIFARankingScraper:
             delta = result['cache_expires_at'] - result['fetched_at']
             assert delta.days == 30
     
-    def test_cache_hit_avoids_scraping(self):
+    def test_cache_hit_avoids_scraping(self, scraper, mock_firestore_manager):
         """
         Test that valid cached data bypasses HTTP scraping.
         
@@ -443,10 +421,6 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         # Mock cached data (fresh, within 30 days)
         cached_data = {
             'rankings': [{'rank': 1, 'team_name': 'Argentina'}],
@@ -455,13 +429,9 @@ class TestFIFARankingScraper:
             'total_teams': 211
         }
         
-        with patch.object(scraper, 'fetch_rankings_page') as mock_fetch, \
-             patch('src.firestore_manager.FirestoreManager') as mock_fm:
-            
+        with patch.object(scraper, 'fetch_rankings_page') as mock_fetch:
             # Mock Firestore returns cached data
-            mock_manager = Mock()
-            mock_manager.get_fifa_rankings.return_value = cached_data
-            mock_fm.return_value = mock_manager
+            mock_firestore_manager.get_fifa_rankings.return_value = cached_data
             
             # Execute scrape and store
             result = scraper.scrape_and_store()
@@ -474,7 +444,7 @@ class TestFIFARankingScraper:
             assert result['teams_scraped'] == 211
             assert result['cache_hit'] is True
     
-    def test_force_refresh_bypasses_cache(self):
+    def test_force_refresh_bypasses_cache(self, scraper, mock_firestore_manager):
         """
         Test that force_refresh=True always scrapes, ignoring cache.
         
@@ -484,10 +454,6 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         # Mock cached data (valid)
         cached_data = {
             'rankings': [{'rank': 1, 'team_name': 'Argentina'}],
@@ -497,13 +463,10 @@ class TestFIFARankingScraper:
         }
         
         with patch.object(scraper, 'fetch_rankings_page') as mock_fetch, \
-             patch.object(scraper, 'parse_rankings') as mock_parse, \
-             patch('src.firestore_manager.FirestoreManager') as mock_fm:
+             patch.object(scraper, 'parse_rankings') as mock_parse:
             
             # Mock Firestore returns cached data
-            mock_manager = Mock()
-            mock_manager.get_fifa_rankings.return_value = cached_data
-            mock_fm.return_value = mock_manager
+            mock_firestore_manager.get_fifa_rankings.return_value = cached_data
             
             # Mock fresh scrape
             mock_fetch.return_value = "<html>New Rankings</html>"
@@ -517,11 +480,11 @@ class TestFIFARankingScraper:
             mock_parse.assert_called_once()
             
             # Verify fresh data stored
-            mock_manager.update_fifa_rankings.assert_called_once()
+            mock_firestore_manager.update_fifa_rankings.assert_called_once()
     
     # T011: Team Ranking Lookup Tests
     
-    def test_get_ranking_for_team_success(self):
+    def test_get_ranking_for_team_success(self, scraper, mock_firestore_manager):
         """
         Test successful team ranking lookup by FIFA code.
         
@@ -532,10 +495,6 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         # Mock Firestore document
         mock_rankings_doc = {
             'rankings': [
@@ -547,23 +506,20 @@ class TestFIFARankingScraper:
             'total_teams': 211
         }
         
-        with patch('src.firestore_manager.FirestoreManager') as mock_fm:
-            # Mock Firestore manager
-            mock_manager = Mock()
-            mock_manager.get_fifa_rankings.return_value = mock_rankings_doc
-            mock_fm.return_value = mock_manager
-            
-            # Lookup France
-            ranking = scraper.get_ranking_for_team('FRA')
-            
-            # Verify correct ranking returned
-            assert ranking is not None
-            assert ranking['rank'] == 2
-            assert ranking['team_name'] == 'France'
-            assert ranking['fifa_code'] == 'FRA'
-            assert ranking['points'] == 1845.44
+        # Mock Firestore manager
+        mock_firestore_manager.get_fifa_rankings.return_value = mock_rankings_doc
+        
+        # Lookup France
+        ranking = scraper.get_ranking_for_team('FRA')
+        
+        # Verify correct ranking returned
+        assert ranking is not None
+        assert ranking['rank'] == 2
+        assert ranking['team_name'] == 'France'
+        assert ranking['fifa_code'] == 'FRA'
+        assert ranking['points'] == 1845.44
     
-    def test_get_ranking_for_team_not_found(self):
+    def test_get_ranking_for_team_not_found(self, scraper, mock_firestore_manager):
         """
         Test team lookup for non-existent FIFA code.
         
@@ -571,10 +527,6 @@ class TestFIFARankingScraper:
         
         Expected to FAIL until implementation in T013.
         """
-        from src.fifa_ranking_scraper import FIFARankingScraper
-        
-        scraper = FIFARankingScraper()
-        
         # Mock Firestore document
         mock_rankings_doc = {
             'rankings': [
@@ -585,14 +537,11 @@ class TestFIFARankingScraper:
             'total_teams': 211
         }
         
-        with patch('src.firestore_manager.FirestoreManager') as mock_fm:
-            # Mock Firestore manager
-            mock_manager = Mock()
-            mock_manager.get_fifa_rankings.return_value = mock_rankings_doc
-            mock_fm.return_value = mock_manager
-            
-            # Lookup non-existent code
-            ranking = scraper.get_ranking_for_team('ZZZ')
-            
-            # Verify None returned
-            assert ranking is None
+        # Mock Firestore manager
+        mock_firestore_manager.get_fifa_rankings.return_value = mock_rankings_doc
+        
+        # Lookup non-existent code
+        ranking = scraper.get_ranking_for_team('ZZZ')
+        
+        # Verify None returned
+        assert ranking is None

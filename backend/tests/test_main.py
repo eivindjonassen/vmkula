@@ -38,10 +38,15 @@ class TestSyncAPIFootballEndpoint:
         }
 
         # Act: Send POST request to sync endpoint
-        with patch("src.main.APIFootballSync") as mock_sync_class:
+        # Mock both APIFootballSync and FirestoreManager to avoid credential issues
+        with patch("src.main.APIFootballSync") as mock_sync_class, \
+             patch("src.main.FirestoreManager") as mock_fm_class:
             mock_sync_instance = Mock()
             mock_sync_class.return_value = mock_sync_instance
             mock_sync_instance.sync_teams.return_value = mock_sync_result
+            
+            mock_fm_instance = MagicMock()
+            mock_fm_class.return_value = mock_fm_instance
 
             response = client.post(
                 "/api/sync-api-football",
@@ -84,10 +89,15 @@ class TestSyncAPIFootballEndpoint:
         }
 
         # Act: Send POST request to sync endpoint
-        with patch("src.main.APIFootballSync") as mock_sync_class:
+        # Mock both APIFootballSync and FirestoreManager to avoid credential issues
+        with patch("src.main.APIFootballSync") as mock_sync_class, \
+             patch("src.main.FirestoreManager") as mock_fm_class:
             mock_sync_instance = Mock()
             mock_sync_class.return_value = mock_sync_instance
             mock_sync_instance.sync_fixtures.return_value = mock_sync_result
+            
+            mock_fm_instance = MagicMock()
+            mock_fm_class.return_value = mock_fm_instance
 
             response = client.post(
                 "/api/sync-api-football",
