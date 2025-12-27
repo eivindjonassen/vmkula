@@ -5,14 +5,15 @@
 ## 🎯 Active Focus
 
 - **Feature**: fifa-ranking
-- **Phase**: spec
+- **Phase**: plan
 - **Status**: Awaiting next action
 
 ## 📝 Recent Session Context
 
 ### Session History (Last 5)
 
-1. **2025-12-27** - Spec: Created specification for fifa-ranking. Feature integrates FIFA world rankings data scraping to enhance match prediction accuracy.
+1. **2025-12-27** - Plan: Completed technical planning for fifa-ranking. BeautifulSoup scraper, single-document Firestore storage, 30-day TTL cache.
+2. **2025-12-27** - Spec: Created specification for fifa-ranking. Feature integrates FIFA world rankings data scraping to enhance match prediction accuracy.
 
 
 ### Context Carryover
@@ -26,7 +27,12 @@
 - Must validate 211 teams scraped before persisting
 
 #### From Plan
-- (To be filled during workflow execution)
+- **Storage Decision**: Single document pattern (fifa_rankings/latest) for cost efficiency (48× cheaper than individual docs)
+- **Scraping Library**: BeautifulSoup4 + lxml (static HTML, no JS rendering needed despite button click requirement)
+- **Cache TTL**: 30 days (FIFA rankings update monthly)
+- **Integration Point**: Enrich team stats in data_aggregator.py prediction pipeline
+- **Reusable Patterns**: Rate limiting, retry logic, TTL caching, diff check (all exist in codebase)
+- **Missing Dependencies**: beautifulsoup4>=4.12.0, lxml>=4.9.0, responses>=0.24.0 (test mocking)
 
 #### From Tasks
 - (To be filled during workflow execution)
@@ -35,7 +41,10 @@
 
 ### Architectural Decisions
 
-- (To be documented during implementation)
+- **Storage Pattern**: Single document (fifa_rankings/latest) with 211 team array - matches existing predictions/latest pattern
+- **Scraping Approach**: BeautifulSoup4 for static HTML parsing, 2-second polite delay between requests
+- **Cache Strategy**: 30-day TTL with diff-check optimization to avoid duplicate writes
+- **Integration**: Enrich team stats during prediction pipeline (minimal code changes)
 
 ### Design Choices
 
@@ -60,7 +69,7 @@
 ### Feature Progress
 
 - **Spec**: ✓ Complete
-- **Plan**: ○ Not Started
+- **Plan**: ✓ Complete
 - **Tasks**: ○ Not Started
 - **Implementation**: ○ Not Started
 
@@ -72,23 +81,23 @@
 
 #### Latest Checkpoint
 
-**CP-001** (2025-12-27 16:22): Spec phase complete, validated
-  - **Phase**: spec
+**CP-002** (2025-12-27 16:45): Plan validated, ready for tasks
+  - **Phase**: plan
   - **Status**: Complete
-  - **Context**: ~20% utilization
-  - **Artifacts**: specs/fifa-ranking/spec.md (validated)
-  - **Dependencies**: None (initial checkpoint)
-  - **Next**: `/plan fifa-ranking` to proceed to planning phase
+  - **Artifacts**: plan.md, research.md, data-model.md, contracts/fifa_ranking_api.md
+  - **Dependencies**: Spec validated, technical context resolved
+  - **Next**: `/tasks fifa-ranking` to break down into tasks
 
 #### Checkpoint History
 
-1. **CP-001** (2025-12-27 16:22): Spec phase complete, validated
+1. **CP-002** (2025-12-27 16:45): Plan validated, ready for tasks
+2. **CP-001** (2025-12-27 16:22): Spec phase complete, validated
 
 ## 🔄 Next Actions
 
 ### Immediate Next Steps
 
-1. Run `/plan fifa-ranking` to proceed to planning phase
+1. Run `/tasks fifa-ranking` to proceed to task breakdown phase
 
 ### Blockers & Issues
 
