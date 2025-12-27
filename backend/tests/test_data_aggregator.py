@@ -192,6 +192,7 @@ def test_retry_exponential_backoff(monkeypatch):
     aggregator = DataAggregator()
 
     # Mock API to fail with 429 twice, then succeed with valid fixture data
+    # Include "fixture" key which is always accessed by transform_api_response
     mock_api = MagicMock(
         side_effect=[
             Exception("429 Rate Limit"),
@@ -199,6 +200,7 @@ def test_retry_exponential_backoff(monkeypatch):
             {
                 "response": [
                     {
+                        "fixture": {"id": 12345},
                         "teams": {"home": {"id": 1}, "away": {"id": 2}},
                         "goals": {"home": 2, "away": 1},
                     }
@@ -208,7 +210,7 @@ def test_retry_exponential_backoff(monkeypatch):
     )
     aggregator.fetch_from_api = mock_api
 
-    # Pass fetch_xg=False to avoid needing fixture.id in mock response
+    # Pass fetch_xg=False to skip xG fetching (which would need additional API call)
     result = aggregator.fetch_team_stats(1, fetch_xg=False)
 
     # Should succeed and return computed metrics (not raw response)
