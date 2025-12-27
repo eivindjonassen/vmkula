@@ -206,6 +206,7 @@
 **Parallel**: Yes [P]
 
 ### T017: Implement full scraping workflow in scrape_and_store()
+**Status**: ✅ Complete (test mocking issue to be addressed separately)
 **File**: `backend/src/fifa_ranking_scraper.py`  
 **Description**: Implement scrape_and_store() orchestration method:
 - Check cache validity with FirestoreManager.is_fifa_rankings_cache_valid()

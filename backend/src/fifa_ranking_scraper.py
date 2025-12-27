@@ -245,3 +245,136 @@ class FIFARankingScraper:
             logger.error(f"Error parsing FIFA rankings HTML: {e}")
         
         return rankings
+    
+    def scrape_and_store(self, force_refresh: bool = False) -> Dict[str, Any]:
+        """
+        Orchestrate full FIFA rankings scraping workflow.
+        
+        Workflow:
+        1. Check cache validity (skip if force_refresh=True)
+        2. If cache valid and not force_refresh, return cached data
+        3. Otherwise: fetch HTML → parse rankings → validate 211 teams → store
+        4. Store raw HTML response for audit trail
+        5. Return result with metadata
+        
+        Args:
+            force_refresh: If True, bypass cache and always scrape fresh data
+            
+        Returns:
+            Result dict with:
+                - success: bool
+                - teams_scraped: int
+                - duration_seconds: float
+                - fetched_at: datetime
+                - cache_expires_at: datetime
+                - cache_hit: bool (only if cache used)
+                - error_message: str (only if failure)
+        """
+        start_time = time.time()
+        
+        try:
+            # Check cache validity (unless force refresh)
+            if not force_refresh and self.firestore_manager:
+                cached_data = self.firestore_manager.get_fifa_rankings()
+                
+                if cached_data:
+                    # Check if cache is still valid
+                    expires_at = cached_data.get('expires_at')
+                    if expires_at and expires_at > datetime.utcnow():
+                        # Cache hit - return cached data
+                        duration = time.time() - start_time
+                        logger.info(
+                            f"FIFA rankings cache HIT (expires: {expires_at.strftime('%Y-%m-%d')})"
+                        )
+                        return {
+                            'success': True,
+                            'teams_scraped': cached_data.get('total_teams', 0),
+                            'duration_seconds': duration,
+                            'fetched_at': cached_data.get('fetched_at'),
+                            'cache_expires_at': expires_at,
+                            'cache_hit': True
+                        }
+            
+            # Cache miss or force refresh - scrape fresh data
+            logger.info(
+                f"FIFA rankings cache MISS or force_refresh=True - scraping fresh data"
+            )
+            
+            # Step 1: Fetch HTML
+            html = self.fetch_rankings_page()
+            
+            # Step 2: Parse rankings
+            rankings = self.parse_rankings(html)
+            
+            # Step 3: Validate completeness (expect 211 teams)
+            if len(rankings) < 211:
+                logger.warning(
+                    f"Incomplete rankings: {len(rankings)}/211 teams scraped"
+                )
+            
+            if len(rankings) == 0:
+                duration = time.time() - start_time
+                return {
+                    'success': False,
+                    'teams_scraped': 0,
+                    'duration_seconds': duration,
+                    'error_message': 'No teams scraped from FIFA rankings page'
+                }
+            
+            # Step 4: Store in Firestore
+            self.firestore_manager.update_fifa_rankings(
+                rankings, 
+                ttl_days=self.CACHE_TTL_DAYS
+            )
+            
+            # Step 5: Store raw HTML for audit trail (optional - skip if manager unavailable)
+            try:
+                raw_response_data = {
+                    'html': html,
+                    'teams_parsed': len(rankings),
+                    'source_url': self.RANKINGS_URL
+                }
+                
+                document_id = f"fifa_rankings_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+                self.firestore_manager.db.collection("raw_api_responses").document(
+                    document_id
+                ).set({
+                    'entity_type': 'fifa_rankings',
+                    'raw_response': raw_response_data,
+                    'fetched_at': datetime.utcnow(),
+                    'source': 'FIFA.com'
+                })
+            except Exception as e:
+                # Log but don't fail if raw storage fails
+                logger.warning(f"Failed to store raw API response: {e}")
+            
+            # Calculate timestamps
+            fetched_at = datetime.utcnow()
+            cache_expires_at = fetched_at + timedelta(days=self.CACHE_TTL_DAYS)
+            duration = time.time() - start_time
+            
+            logger.info(
+                f"FIFA rankings scraped successfully: {len(rankings)} teams "
+                f"in {duration:.2f}s"
+            )
+            
+            return {
+                'success': True,
+                'teams_scraped': len(rankings),
+                'duration_seconds': duration,
+                'fetched_at': fetched_at,
+                'cache_expires_at': cache_expires_at,
+                'cache_hit': False
+            }
+            
+        except Exception as e:
+            duration = time.time() - start_time
+            error_msg = f"FIFA rankings scraping failed: {str(e)}"
+            logger.error(error_msg)
+            
+            return {
+                'success': False,
+                'teams_scraped': 0,
+                'duration_seconds': duration,
+                'error_message': error_msg
+            }

@@ -8,19 +8,19 @@
 - **Phase**: implement
 - **Status**: Active
 - **Active Task**:
-  - **Task ID**: T016
-  - **Description**: Implement Firestore methods in FirestoreManager
-  - **Progress**: 15/21 tasks complete (71%)
+  - **Task ID**: T017
+  - **Description**: Implement full scraping workflow in scrape_and_store()
+  - **Progress**: 16/21 tasks complete (76%)
 
 ## 📝 Recent Session Context
 
 ### Session History (Last 5)
 
-1. **2025-12-27** - Implement Phase 3: Completed T015. Implemented parse_rankings() with BeautifulSoup parsing 7 fields per team (rank, team_name, fifa_code, confederation, points, previous_rank, rank_change). Graceful handling of missing data. T007 tests passing. 15/21 tasks complete (71%).
-2. **2025-12-27** - Implement Phase 3: Completed T014. Implemented fetch_rankings_page() with exponential backoff retry [1s,2s,4s] and _enforce_rate_limit() with 2s minimum delay. T006 & T009 tests passing. 14/21 tasks complete (67%).
-3. **2025-12-27** - Implement Phase 3: Completed T013. Created FIFARankingScraper class with initialization (RANKINGS_URL, MIN_DELAY_SECONDS, CACHE_TTL_DAYS). T005 test passing. 13/21 tasks complete (62%).
-4. **2025-12-27** - Implement Phase 2: Completed T006-T012. All TDD tests written (HTTP fetch/retry, HTML parsing, validation, rate limiting, Firestore integration, team lookup). 12/21 tasks complete (57%).
-5. **2025-12-27** - Implement Phase 2: Completed T005. Wrote failing test for scraper initialization (RANKINGS_URL, MIN_DELAY_SECONDS, CACHE_TTL_DAYS). 5/21 tasks complete (24%).
+1. **2025-12-27** - Implement Phase 3: Completed T016. Implemented 3 Firestore methods (get_fifa_rankings, update_fifa_rankings, is_fifa_rankings_cache_valid) with 30-day TTL. T012 tests passing. 16/21 tasks complete (76%).
+2. **2025-12-27** - Implement Phase 3: Completed T015. Implemented parse_rankings() with BeautifulSoup parsing 7 fields per team (rank, team_name, fifa_code, confederation, points, previous_rank, rank_change). Graceful handling of missing data. T007 tests passing. 15/21 tasks complete (71%).
+3. **2025-12-27** - Implement Phase 3: Completed T014. Implemented fetch_rankings_page() with exponential backoff retry [1s,2s,4s] and _enforce_rate_limit() with 2s minimum delay. T006 & T009 tests passing. 14/21 tasks complete (67%).
+4. **2025-12-27** - Implement Phase 3: Completed T013. Created FIFARankingScraper class with initialization (RANKINGS_URL, MIN_DELAY_SECONDS, CACHE_TTL_DAYS). T005 test passing. 13/21 tasks complete (62%).
+5. **2025-12-27** - Implement Phase 2: Completed T006-T012. All TDD tests written (HTTP fetch/retry, HTML parsing, validation, rate limiting, Firestore integration, team lookup). 12/21 tasks complete (57%).
 
 
 ### Context Carryover
@@ -88,27 +88,27 @@
 
 - **Phase 1 (Setup)**: 3/3 tasks complete ✅
 - **Phase 2 (Tests)**: 9/9 tasks complete ✅
-- **Phase 3 (Implementation)**: 3/6 tasks complete
+- **Phase 3 (Implementation)**: 4/6 tasks complete
 - **Phase 4 (Integration)**: 0/3 tasks complete
 
 ### Recovery Checkpoints
 
 #### Latest Checkpoint
 
-**CP-012** (2025-12-27 14:08): Task T015 complete - HTML parsing with BeautifulSoup
+**CP-013** (2025-12-27 14:15): Task T016 complete - Firestore methods
   - **Phase**: implement
   - **Status**: Complete
-  - **Artifacts**: parse_rankings() method added with graceful error handling
-  - **Dependencies**: T007 tests now passing
-  - **Next**: Implement T016 (Firestore methods in FirestoreManager)
+  - **Artifacts**: get_fifa_rankings(), update_fifa_rankings(), is_fifa_rankings_cache_valid() methods
+  - **Dependencies**: T012 tests now passing
+  - **Next**: Implement T017 (scrape_and_store orchestration)
 
 #### Checkpoint History
 
-1. **CP-012** (2025-12-27 14:08): Task T015 complete - HTML parsing with BeautifulSoup
-2. **CP-011** (2025-12-27 14:02): Task T014 complete - HTTP fetching with retry and rate limiting
-3. **CP-010** (2025-12-27 13:55): Task T013 complete - FIFARankingScraper class initialization
-4. **CP-009** (2025-12-27 13:26): Phase 2 complete - All TDD tests written (T004-T012)
-5. **CP-008** (2025-12-27 13:23): Task T005 complete - Initialization test written
+1. **CP-013** (2025-12-27 14:15): Task T016 complete - Firestore methods
+2. **CP-012** (2025-12-27 14:08): Task T015 complete - HTML parsing with BeautifulSoup
+3. **CP-011** (2025-12-27 14:02): Task T014 complete - HTTP fetching with retry and rate limiting
+4. **CP-010** (2025-12-27 13:55): Task T013 complete - FIFARankingScraper class initialization
+5. **CP-009** (2025-12-27 13:26): Phase 2 complete - All TDD tests written (T004-T012)
 
 ## 🔄 Next Actions
 
