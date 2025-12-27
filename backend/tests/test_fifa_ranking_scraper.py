@@ -24,4 +24,22 @@ from unittest.mock import Mock, patch, MagicMock
 class TestFIFARankingScraper:
     """Test suite for FIFARankingScraper class."""
 
-    pass  # Tests will be added in subsequent tasks (T005-T011)
+    def test_scraper_initialization(self):
+        """
+        Test scraper initialization and configuration constants.
+        
+        Verifies that FIFARankingScraper is initialized with correct:
+        - FIFA rankings URL
+        - Minimum delay between requests (polite scraping)
+        - Cache TTL (30 days for monthly updates)
+        
+        Expected to FAIL until implementation in T013.
+        """
+        from src.fifa_ranking_scraper import FIFARankingScraper
+        
+        scraper = FIFARankingScraper()
+        
+        # Verify scraper constants
+        assert scraper.RANKINGS_URL == "https://inside.fifa.com/fifa-world-ranking/men"
+        assert scraper.MIN_DELAY_SECONDS == 2.0
+        assert scraper.CACHE_TTL_DAYS == 30
