@@ -1,25 +1,27 @@
 """
 FIFA World Rankings Scraper Module.
 
-This module scrapes FIFA world rankings from https://inside.fifa.com/fifa-world-ranking/men
-and stores them in Firestore with a 30-day TTL cache.
+This module fetches FIFA world rankings from the FIFA API and stores them
+in Firestore with a 30-day TTL cache.
 
 Features:
-- BeautifulSoup4-based static HTML parsing (no JavaScript rendering needed)
+- Direct FIFA API access (more reliable than HTML scraping)
+- Two-step fetch: page metadata for dateId, then API for rankings
 - Polite scraping with 2-second minimum delay between requests
 - Exponential backoff retry logic for transient failures
 - 30-day TTL cache (FIFA rankings update monthly)
 - Single-document Firestore storage pattern for cost efficiency
-- Validation to ensure all 211 FIFA member nations are scraped
+- Validation to ensure all 211 FIFA member nations are fetched
 """
 
 import logging
+import re
 import time
+import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 
 import requests
-from bs4 import BeautifulSoup
 
 from src.exceptions import DataAggregationError
 from src.firestore_manager import FirestoreManager
@@ -34,7 +36,7 @@ logging.basicConfig(
 
 class FIFARankingScraper:
     """
-    Scrapes FIFA world rankings and stores them in Firestore.
+    Fetches FIFA world rankings via API and stores them in Firestore.
     
     Implements polite scraping with rate limiting, retry logic, and caching
     to minimize requests to FIFA.com while providing fresh ranking data for
@@ -42,7 +44,8 @@ class FIFARankingScraper:
     """
     
     # Class constants
-    RANKINGS_URL = "https://inside.fifa.com/fifa-world-ranking/men"
+    RANKINGS_PAGE_URL = "https://inside.fifa.com/fifa-world-ranking/men"
+    RANKINGS_API_URL = "https://inside.fifa.com/api/ranking-overview"
     MIN_DELAY_SECONDS = 2.0  # Polite scraping delay
     CACHE_TTL_DAYS = 30  # FIFA rankings update monthly
     
@@ -50,6 +53,11 @@ class FIFARankingScraper:
         """Initialize the FIFA ranking scraper with rate limiting."""
         self.last_request_time: float = 0.0
         self.firestore_manager = FirestoreManager()
+        self._headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Referer': self.RANKINGS_PAGE_URL
+        }
         logger.info("FIFARankingScraper initialized")
     
     def _enforce_rate_limit(self) -> None:
@@ -65,27 +73,27 @@ class FIFARankingScraper:
             logger.debug(f"Rate limit: sleeping {sleep_time:.2f}s")
             time.sleep(sleep_time)
     
-    def fetch_rankings_page(self) -> str:
+    def _make_request(self, url: str, accept_html: bool = False) -> requests.Response:
         """
-        Fetch FIFA rankings HTML page with retry logic.
+        Make an HTTP request with rate limiting and retry logic.
         
-        Implements exponential backoff retry strategy [1s, 2s, 4s] for transient
-        failures. Enforces rate limiting on all requests.
-        
+        Args:
+            url: URL to fetch
+            accept_html: If True, accept HTML response; otherwise JSON
+            
         Returns:
-            HTML content of the rankings page
+            Response object
             
         Raises:
-            DataAggregationError: After max retries exceeded (4 attempts total)
+            DataAggregationError: After max retries exceeded
         """
         max_retries = 3
         retry_delays = [1, 2, 4]
         
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
+        headers = self._headers.copy()
+        if accept_html:
+            headers['Accept'] = 'text/html,application/xhtml+xml'
         
-        logger.info(f"Fetching FIFA rankings from {self.RANKINGS_URL}")
         start_time = time.time()
         
         for attempt in range(max_retries + 1):
@@ -94,171 +102,194 @@ class FIFARankingScraper:
                 self._enforce_rate_limit()
             
             try:
-                # Make HTTP request
-                response = requests.get(self.RANKINGS_URL, headers=headers, timeout=30)
-                
-                # Check for successful response
+                response = requests.get(url, headers=headers, timeout=30)
                 response.raise_for_status()
                 
-                # Only update last_request_time on successful request
                 self.last_request_time = time.time()
-                
                 elapsed = time.time() - start_time
+                
                 logger.info(
-                    f"FIFA rankings fetch SUCCESS (attempt {attempt + 1}, "
-                    f"elapsed {elapsed:.2f}s, {len(response.text)} bytes)"
+                    f"Request SUCCESS: {url[:60]}... (attempt {attempt + 1}, "
+                    f"elapsed {elapsed:.2f}s)"
                 )
-                return response.text
+                return response
                 
             except Exception as e:
                 error_msg = str(e)
                 elapsed = time.time() - start_time
                 
-                # On last attempt, raise final exception
                 if attempt == max_retries:
                     logger.error(
-                        f"FIFA rankings fetch FAILED after {attempt + 1} attempts "
+                        f"Request FAILED after {attempt + 1} attempts "
                         f"(elapsed {elapsed:.2f}s): {error_msg}"
                     )
-                    # Use team_id=0 to indicate FIFA rankings fetch (not team-specific)
                     raise DataAggregationError(
                         0, 
-                        f"FIFA rankings fetch failed: {error_msg}"
+                        f"FIFA request failed: {error_msg}"
                     ) from e
                 
-                # Exponential backoff
                 delay = retry_delays[attempt]
                 logger.warning(
-                    f"FIFA rankings fetch failed (attempt {attempt + 1}), "
+                    f"Request failed (attempt {attempt + 1}), "
                     f"retrying in {delay}s: {error_msg}"
                 )
                 time.sleep(delay)
         
-        # Should never reach here, but satisfy type checker
-        raise DataAggregationError(0, "FIFA rankings fetch: max retries exceeded")
+        raise DataAggregationError(0, "FIFA request: max retries exceeded")
     
-    def parse_rankings(self, html: str) -> List[Dict[str, Any]]:
+    def _get_latest_date_id(self) -> str:
         """
-        Parse FIFA rankings HTML table and extract team data.
+        Fetch the latest ranking dateId from the FIFA page metadata.
         
-        Args:
-            html: Raw HTML content from FIFA rankings page
-            
+        The FIFA rankings page embeds __NEXT_DATA__ JSON with available
+        ranking dates. We extract the latest dateId to use in API calls.
+        
         Returns:
-            List of dicts with team ranking data (up to 211 teams)
-            Each dict contains: rank, team_name, fifa_code, confederation, 
-                              points, previous_rank, rank_change
-        
+            Latest dateId string (e.g., "id14962")
+            
         Raises:
-            None - logs warnings for parsing errors, returns partial data
+            DataAggregationError: If dateId cannot be extracted
         """
-        rankings: List[Dict[str, Any]] = []
+        logger.info("Fetching latest FIFA ranking dateId...")
+        
+        response = self._make_request(self.RANKINGS_PAGE_URL, accept_html=True)
+        html = response.text
+        
+        # Extract __NEXT_DATA__ JSON from page
+        next_data_match = re.search(
+            r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', 
+            html, 
+            re.DOTALL
+        )
+        
+        if not next_data_match:
+            raise DataAggregationError(0, "Could not find __NEXT_DATA__ in FIFA page")
         
         try:
-            soup = BeautifulSoup(html, 'lxml')
-            table = soup.find('table', class_='table')
+            next_data = json.loads(next_data_match.group(1))
+            page_data = next_data['props']['pageProps']['pageData']
+            ranking = page_data['ranking']
+            dates = ranking.get('dates', [])
             
-            if not table:
-                logger.warning("FIFA rankings table not found in HTML")
-                return rankings
+            if not dates:
+                raise DataAggregationError(0, "No ranking dates found in FIFA page data")
             
-            tbody = table.find('tbody')
-            if not tbody:
-                logger.warning("Table body not found in FIFA rankings table")
-                return rankings
+            # Get the latest date (first year, first date)
+            latest_year = dates[0]
+            latest_dates = latest_year.get('dates', [])
             
-            rows = tbody.find_all('tr')
+            if not latest_dates:
+                raise DataAggregationError(0, "No dates in latest year")
             
-            for row in rows:
-                try:
-                    # Extract all fields
-                    rank_td = row.find('td', class_='rank')
-                    team_name_td = row.find('td', class_='team-name')
-                    fifa_code_td = row.find('td', class_='fifa-code')
-                    confederation_td = row.find('td', class_='confederation')
-                    points_td = row.find('td', class_='points')
-                    previous_rank_td = row.find('td', class_='previous-rank')
-                    
-                    # Skip row if critical fields are missing
-                    if not rank_td or not team_name_td:
-                        logger.warning(f"Skipping row with missing rank or team name")
-                        continue
-                    
-                    # Parse rank (required)
-                    try:
-                        rank = int(rank_td.get_text(strip=True))
-                    except (ValueError, AttributeError) as e:
-                        logger.warning(f"Invalid rank value: {e}")
-                        continue
-                    
-                    # Parse team name (required)
-                    team_name = team_name_td.get_text(strip=True)
-                    if not team_name:
-                        logger.warning(f"Empty team name for rank {rank}")
-                        continue
-                    
-                    # Parse optional fields
-                    fifa_code = fifa_code_td.get_text(strip=True) if fifa_code_td else None
-                    confederation = confederation_td.get_text(strip=True) if confederation_td else None
-                    
-                    # Parse points (optional, float)
-                    points = None
-                    if points_td:
-                        try:
-                            points = float(points_td.get_text(strip=True))
-                        except (ValueError, AttributeError) as e:
-                            logger.warning(f"Invalid points value for {team_name}: {e}")
-                    
-                    # Parse previous rank (optional, int)
-                    previous_rank = None
-                    if previous_rank_td:
-                        try:
-                            previous_rank = int(previous_rank_td.get_text(strip=True))
-                        except (ValueError, AttributeError) as e:
-                            logger.warning(f"Invalid previous rank value for {team_name}: {e}")
-                    
-                    # Calculate rank change
-                    rank_change = None
-                    if previous_rank is not None:
-                        rank_change = previous_rank - rank  # positive = moved up, negative = moved down
-                    
-                    # Build team dict
-                    team_data = {
-                        'rank': rank,
-                        'team_name': team_name,
-                        'fifa_code': fifa_code,
-                        'confederation': confederation,
-                        'points': points,
-                        'previous_rank': previous_rank,
-                        'rank_change': rank_change
-                    }
-                    
-                    rankings.append(team_data)
-                    
-                except Exception as e:
-                    logger.warning(f"Error parsing row: {e}")
+            date_id = latest_dates[0].get('id')
+            date_text = latest_dates[0].get('dateText', 'unknown')
+            
+            logger.info(f"Found latest dateId: {date_id} ({date_text})")
+            return date_id
+            
+        except (KeyError, IndexError, json.JSONDecodeError) as e:
+            raise DataAggregationError(
+                0, 
+                f"Failed to parse FIFA page data for dateId: {e}"
+            ) from e
+    
+    def fetch_rankings_from_api(self, date_id: str) -> List[Dict[str, Any]]:
+        """
+        Fetch rankings from FIFA API for a specific date.
+        
+        Args:
+            date_id: FIFA ranking date identifier (e.g., "id14962")
+            
+        Returns:
+            List of team ranking dicts with normalized structure
+        """
+        api_url = f"{self.RANKINGS_API_URL}?locale=en&dateId={date_id}"
+        
+        logger.info(f"Fetching rankings from FIFA API with dateId={date_id}")
+        
+        response = self._make_request(api_url)
+        data = response.json()
+        
+        raw_rankings = data.get('rankings', [])
+        logger.info(f"API returned {len(raw_rankings)} teams")
+        
+        # Normalize the API response to our standard format
+        rankings = []
+        for item in raw_rankings:
+            try:
+                ranking_item = item.get('rankingItem', {})
+                tag = item.get('tag', {})
+                
+                rank = ranking_item.get('rank')
+                team_name = ranking_item.get('name')
+                
+                if rank is None or not team_name:
+                    logger.warning(f"Skipping item with missing rank or name: {item}")
                     continue
-            
-            logger.info(f"Successfully parsed {len(rankings)} teams from FIFA rankings")
-            
-        except Exception as e:
-            logger.error(f"Error parsing FIFA rankings HTML: {e}")
+                
+                previous_rank = ranking_item.get('previousRank')
+                rank_change = None
+                if previous_rank is not None:
+                    rank_change = previous_rank - rank
+                
+                team_data = {
+                    'rank': rank,
+                    'team_name': team_name,
+                    'fifa_code': ranking_item.get('countryCode'),
+                    'confederation': tag.get('id'),
+                    'points': ranking_item.get('totalPoints'),
+                    'previous_rank': previous_rank,
+                    'previous_points': item.get('previousPoints'),
+                    'rank_change': rank_change,
+                    'fifa_team_id': ranking_item.get('idTeam'),
+                    'flag_url': ranking_item.get('flag', {}).get('src'),
+                }
+                
+                rankings.append(team_data)
+                
+            except Exception as e:
+                logger.warning(f"Error parsing ranking item: {e}")
+                continue
         
         return rankings
     
+    # Keep legacy method for backward compatibility
+    def fetch_rankings_page(self) -> str:
+        """
+        Fetch FIFA rankings HTML page (legacy method).
+        
+        Note: This method is kept for backward compatibility but the API
+        approach (fetch_rankings_from_api) is now preferred.
+        """
+        response = self._make_request(self.RANKINGS_PAGE_URL, accept_html=True)
+        return response.text
+    
+    def parse_rankings(self, html: str) -> List[Dict[str, Any]]:
+        """
+        Parse FIFA rankings from HTML (legacy method).
+        
+        Note: This method is kept for backward compatibility but returns
+        empty list since FIFA now uses a JavaScript SPA. Use the API approach.
+        """
+        logger.warning(
+            "parse_rankings() is deprecated - FIFA uses JavaScript SPA. "
+            "Use fetch_rankings_from_api() instead."
+        )
+        return []
+    
     def scrape_and_store(self, force_refresh: bool = False) -> Dict[str, Any]:
         """
-        Orchestrate full FIFA rankings scraping workflow.
+        Orchestrate full FIFA rankings fetch workflow.
         
         Workflow:
         1. Check cache validity (skip if force_refresh=True)
         2. If cache valid and not force_refresh, return cached data
-        3. Otherwise: fetch HTML → parse rankings → validate 211 teams → store
-        4. Store raw HTML response for audit trail
+        3. Otherwise: fetch dateId → call API → validate 211 teams → store
+        4. Store raw API response for audit trail
         5. Return result with metadata
         
         Args:
-            force_refresh: If True, bypass cache and always scrape fresh data
+            force_refresh: If True, bypass cache and always fetch fresh data
             
         Returns:
             Result dict with:
@@ -278,10 +309,8 @@ class FIFARankingScraper:
                 cached_data = self.firestore_manager.get_fifa_rankings()
                 
                 if cached_data:
-                    # Check if cache is still valid
                     expires_at = cached_data.get('expires_at')
                     if expires_at and expires_at > datetime.utcnow():
-                        # Cache hit - return cached data
                         duration = time.time() - start_time
                         logger.info(
                             f"FIFA rankings cache HIT (expires: {expires_at.strftime('%Y-%m-%d')})"
@@ -295,21 +324,21 @@ class FIFARankingScraper:
                             'cache_hit': True
                         }
             
-            # Cache miss or force refresh - scrape fresh data
+            # Cache miss or force refresh - fetch fresh data
             logger.info(
-                f"FIFA rankings cache MISS or force_refresh=True - scraping fresh data"
+                "FIFA rankings cache MISS or force_refresh=True - fetching fresh data"
             )
             
-            # Step 1: Fetch HTML
-            html = self.fetch_rankings_page()
+            # Step 1: Get latest dateId from page metadata
+            date_id = self._get_latest_date_id()
             
-            # Step 2: Parse rankings
-            rankings = self.parse_rankings(html)
+            # Step 2: Fetch rankings from API
+            rankings = self.fetch_rankings_from_api(date_id)
             
             # Step 3: Validate completeness (expect 211 teams)
             if len(rankings) < 211:
                 logger.warning(
-                    f"Incomplete rankings: {len(rankings)}/211 teams scraped"
+                    f"Incomplete rankings: {len(rankings)}/211 teams fetched"
                 )
             
             if len(rankings) == 0:
@@ -318,7 +347,7 @@ class FIFARankingScraper:
                     'success': False,
                     'teams_scraped': 0,
                     'duration_seconds': duration,
-                    'error_message': 'No teams scraped from FIFA rankings page'
+                    'error_message': 'No teams fetched from FIFA API'
                 }
             
             # Step 4: Store in Firestore
@@ -327,25 +356,22 @@ class FIFARankingScraper:
                 ttl_days=self.CACHE_TTL_DAYS
             )
             
-            # Step 5: Store raw HTML for audit trail (optional - skip if manager unavailable)
+            # Step 5: Store raw API response for audit trail
             try:
-                raw_response_data = {
-                    'html': html,
-                    'teams_parsed': len(rankings),
-                    'source_url': self.RANKINGS_URL
-                }
-                
                 document_id = f"fifa_rankings_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
                 self.firestore_manager.db.collection("raw_api_responses").document(
                     document_id
                 ).set({
                     'entity_type': 'fifa_rankings',
-                    'raw_response': raw_response_data,
+                    'raw_response': {
+                        'date_id': date_id,
+                        'teams_count': len(rankings),
+                        'source_url': f"{self.RANKINGS_API_URL}?dateId={date_id}"
+                    },
                     'fetched_at': datetime.utcnow(),
-                    'source': 'FIFA.com'
+                    'source': 'FIFA API'
                 })
             except Exception as e:
-                # Log but don't fail if raw storage fails
                 logger.warning(f"Failed to store raw API response: {e}")
             
             # Calculate timestamps
@@ -354,7 +380,7 @@ class FIFARankingScraper:
             duration = time.time() - start_time
             
             logger.info(
-                f"FIFA rankings scraped successfully: {len(rankings)} teams "
+                f"FIFA rankings fetched successfully: {len(rankings)} teams "
                 f"in {duration:.2f}s"
             )
             
@@ -369,7 +395,7 @@ class FIFARankingScraper:
             
         except Exception as e:
             duration = time.time() - start_time
-            error_msg = f"FIFA rankings scraping failed: {str(e)}"
+            error_msg = f"FIFA rankings fetch failed: {str(e)}"
             logger.error(error_msg)
             
             return {
@@ -397,7 +423,7 @@ class FIFARankingScraper:
                 f"({'missing' if len(rankings) < 211 else 'extra'} teams)"
             )
         else:
-            logger.info(f"Rankings validation passed: 211/211 teams present")
+            logger.info("Rankings validation passed: 211/211 teams present")
         
         return is_complete
     
@@ -413,7 +439,6 @@ class FIFARankingScraper:
             Format: {rank, team_name, fifa_code, confederation, points, previous_rank, rank_change}
         """
         try:
-            # Fetch cached rankings from Firestore
             rankings_data = self.firestore_manager.get_fifa_rankings()
             
             if not rankings_data:
@@ -422,7 +447,6 @@ class FIFARankingScraper:
             
             rankings = rankings_data.get('rankings', [])
             
-            # Search for team by FIFA code
             for team in rankings:
                 if team.get('fifa_code') == fifa_code:
                     logger.info(f"Found ranking for {fifa_code}: rank #{team.get('rank')}")
