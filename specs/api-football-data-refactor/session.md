@@ -5,14 +5,15 @@
 ## 🎯 Active Focus
 
 - **Feature**: api-football-data-refactor
-- **Phase**: spec
-- **Status**: In Progress
+- **Phase**: plan
+- **Status**: Awaiting next action
 
 ## 📝 Recent Session Context
 
 ### Session History (Last 5)
 
-1. **2025-12-27** - Spec: Created specification for api-football-data-refactor. Refactoring data architecture to use API-Football as single source of truth, eliminating SQLite dependencies.
+1. **2025-12-27** - Plan: Completed technical planning for api-football-data-refactor. Dual-cache elimination + legacy cleanup approach.
+2. **2025-12-27** - Spec: Created specification for api-football-data-refactor. Refactoring data architecture to use API-Football as single source of truth, eliminating SQLite dependencies.
 
 
 ### Context Carryover
@@ -25,6 +26,14 @@
 - **Backward Compatibility**: Must maintain existing Firestore schema for teams, matches, predictions
 
 #### From Plan
+- **Critical Discovery**: SQLite already eliminated! Migration complete.
+- **Actual Scope**: Cleanup legacy code + eliminate dual-cache (local files + Firestore)
+- **Approach**: Option B - Optimize caching, single Firestore cache layer only
+- **Architecture**: API-Football → Firestore cache → Backend → predictions/latest
+- **Files to Delete**: migrate_to_firestore.py, legacy DBManager references
+- **Cache Strategy**: Remove local file cache (backend/cache/), use only Firestore team stats cache
+
+#### From Plan
 - (To be filled during workflow execution)
 
 #### From Tasks
@@ -34,7 +43,10 @@
 
 ### Architectural Decisions
 
-- (To be documented during implementation)
+- **Single Cache Layer**: Eliminate local file cache, use only Firestore for team stats caching
+- **Preserve Hash-Based Invalidation**: Keep existing smart prediction cache (hash-based)
+- **Backward Compatible Schema**: Maintain snake_case Firestore fields for frontend compatibility
+- **Legacy Code Cleanup**: Delete migration scripts, archive if needed for historical reference
 
 ### Design Choices
 
@@ -58,8 +70,8 @@
 
 ### Feature Progress
 
-- **Specification**: ⧗ In Progress
-- **Planning**: ○ Not Started
+- **Specification**: ✓ Complete
+- **Planning**: ✓ Complete
 - **Tasks**: ○ Not Started
 - **Implementation**: ○ Not Started
 
@@ -71,24 +83,24 @@
 
 #### Latest Checkpoint
 
-**CP-001** (2025-12-27 01:14): Session initialized
-  - **Phase**: spec
-  - **Status**: In Progress
-  - **Artifacts**: Session file created, spec.md drafted
-  - **Dependencies**: None
-  - **Next**: Complete specification phase
+**CP-003** (2025-12-27 01:26): Plan validated, ready for tasks
+  - **Phase**: plan
+  - **Status**: Complete
+  - **Artifacts**: plan.md, research.md, data-model (in plan), contracts (in plan)
+  - **Dependencies**: Spec validated, technical context resolved
+  - **Next**: `/tasks api-football-data-refactor` to break down into tasks
 
 #### Checkpoint History
 
-1. **CP-001** (2025-12-27 01:14): Session initialized for api-football-data-refactor
+1. **CP-003** (2025-12-27 01:26): Plan validated, ready for tasks
+2. **CP-002** (2025-12-27 01:14): Spec phase complete, validated
+3. **CP-001** (2025-12-27 01:14): Session initialized for api-football-data-refactor
 
 ## 🔄 Next Actions
 
 ### Immediate Next Steps
 
-1. Complete specification validation
-2. Run validation script
-3. Commit specification
+1. Run `/tasks api-football-data-refactor` to proceed to task breakdown phase
 
 ## ⚠️ Known Issues & Blockers
 
