@@ -24,6 +24,12 @@ class Team:
     group_letter: str       # "A"-"L" (null for knockout-only teams)
     is_placeholder: bool    # True for TBD playoff teams (e.g., UEFA playoff winner)
     api_football_id: int    # API-Football team ID (null if no data available)
+    
+    # Sync metadata fields (backward-compatible)
+    api_football_raw_id: str | None      # Reference to raw API response document
+    last_synced_at: str | None           # ISO8601 timestamp of last sync
+    manual_override: bool                # True if data manually modified (preserves manual changes)
+    sync_conflicts: List[Dict[str, Any]] # List of detected sync conflicts
 ```
 
 **Example**:
@@ -35,7 +41,11 @@ class Team:
   "flag_emoji": "🇲🇽",
   "group": "A",
   "is_placeholder": false,
-  "api_football_id": 16
+  "api_football_id": 16,
+  "api_football_raw_id": "teams_1_2026",
+  "last_synced_at": "2026-06-01T10:00:00Z",
+  "manual_override": false,
+  "sync_conflicts": []
 }
 ```
 
@@ -59,6 +69,12 @@ class Match:
     home_score: int | None      # Actual score (None if not played yet)
     away_score: int | None
     api_football_fixture_id: int | None  # API-Football fixture ID (null if unavailable)
+    
+    # Sync metadata fields (backward-compatible)
+    api_football_raw_id: str | None      # Reference to raw API response document
+    last_synced_at: str | None           # ISO8601 timestamp of last sync
+    manual_override: bool                # True if data manually modified (preserves manual changes)
+    sync_conflicts: List[Dict[str, Any]] # List of detected sync conflicts
 ```
 
 **Example (Group Stage)**:
@@ -331,6 +347,108 @@ class TournamentSnapshot:
 }
 ```
 
+#### API Football Raw
+Stores raw API responses from API-Football for audit trail and rollback capability.
+
+**Source**: Firestore `api_football_raw` collection
+
+**Purpose**: 
+- Preserves complete API responses for debugging and rollback
+- Enables replay of sync process from raw data
+- Provides audit trail for API data changes
+- Supports conflict detection and resolution
+
+**Document Structure**:
+```python
+class APIFootballRaw:
+    entity_type: str        # "teams" or "fixtures"
+    league_id: int          # API-Football league ID
+    season: int             # Season year (e.g., 2026)
+    raw_response: Dict      # Complete API response
+    fetched_at: str         # ISO8601 timestamp
+    api_version: str        # "v3"
+    endpoint: str           # "/teams" or "/fixtures"
+```
+
+**Document ID Format**: `{entity_type}_{league_id}_{season}`
+
+**Example (Teams)**:
+```json
+{
+  "entity_type": "teams",
+  "league_id": 1,
+  "season": 2026,
+  "raw_response": {
+    "response": [
+      {
+        "team": {
+          "id": 16,
+          "name": "Mexico",
+          "code": "MEX",
+          "country": "Mexico",
+          "founded": 1927,
+          "logo": "https://media.api-sports.io/football/teams/16.png"
+        }
+      }
+    ]
+  },
+  "fetched_at": "2026-06-01T10:00:00Z",
+  "api_version": "v3",
+  "endpoint": "/teams"
+}
+```
+
+**Example (Fixtures)**:
+```json
+{
+  "entity_type": "fixtures",
+  "league_id": 1,
+  "season": 2026,
+  "raw_response": {
+    "response": [
+      {
+        "fixture": {
+          "id": 12345,
+          "date": "2026-06-12T15:00:00Z",
+          "venue": {
+            "name": "MetLife Stadium",
+            "city": "East Rutherford"
+          }
+        },
+        "teams": {
+          "home": {"id": 16, "name": "Mexico"},
+          "away": {"id": 24, "name": "Poland"}
+        }
+      }
+    ]
+  },
+  "fetched_at": "2026-06-01T10:00:00Z",
+  "api_version": "v3",
+  "endpoint": "/fixtures"
+}
+```
+
+**Usage Examples**:
+
+1. **Retrieve raw response for rollback**:
+```python
+raw_doc = firestore_manager.get_raw_api_response("teams_1_2026")
+original_data = raw_doc["raw_response"]
+```
+
+2. **Replay sync from raw data**:
+```python
+# Get raw response
+raw_doc = firestore_manager.get_raw_api_response("teams_1_2026")
+
+# Re-run sync with force_update to overwrite manual changes
+sync_result = sync.sync_teams(
+    league_id=1,
+    season=2026,
+    force_update=True
+)
+```
+
 ---
 
 ## Data Relationships & Flow
@@ -339,9 +457,36 @@ class TournamentSnapshot:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Firestore Collections (PRIMARY DATABASE)                   │
-│ - teams (48 teams)                                          │
-│ - matches (104 fixtures)                                    │
+│ API-Football v3 (External Data Source)                      │
+│ - GET /teams                                                 │
+│ - GET /fixtures                                              │
+│ - GET /fixtures/statistics (xG)                              │
+│ - GET /predictions                                           │
+└───────────────────┬─────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Python Backend: api_football_sync.py                        │
+│ - Fetch teams/fixtures from API-Football                    │
+│ - Store raw API responses                                   │
+│ - Detect changes vs Firestore data                          │
+│ - Resolve conflicts (manual overrides)                      │
+│ - Update teams/matches collections                          │
+└───────────────────┬─────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Firestore: api_football_raw collection                      │
+│ - Raw API responses (audit trail)                           │
+│ - Document ID: {entity_type}_{league_id}_{season}           │
+│ - Supports rollback and replay                              │
+└─────────────────────────────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Firestore Collections (PRIMARY DATABASE)                    │
+│ - teams (48 teams with sync metadata)                       │
+│ - matches (104 fixtures with sync metadata)                 │
 │ - team_stats (cached, 24h TTL)                              │
 │ - match_predictions (cached with stats hash)                │
 └───────────────────┬─────────────────────────────────────────┘
@@ -366,19 +511,12 @@ class TournamentSnapshot:
                     ├────────────────────────────────────┐
                     ▼                                    ▼
 ┌─────────────────────────────────────┐  ┌──────────────────────────────────┐
-│ API-Football v3                     │  │ Python Backend: ai_agent.py      │
-│ - GET /fixtures (match results)     │  │ - Build prompts with stats       │
-│ - GET /fixtures/statistics (xG)     │  │ - Call Gemini 3.0 Pro            │
-│ - GET /predictions (API predictions)│  │ - Parse JSON responses           │
+│ Python Backend: data_aggregator.py  │  │ Python Backend: ai_agent.py      │
+│ - Fetch team stats (with caching)   │  │ - Build prompts with stats       │
+│ - Calculate TeamStatistics           │  │ - Call Gemini 3.0 Pro            │
+│ - Handle missing xG data             │  │ - Parse JSON responses           │
 └───────────────┬─────────────────────┘  │ - Retry + fallback logic         │
                 │                        └──────────┬───────────────────────┘
-                ▼                                   │
-┌─────────────────────────────────────┐            │
-│ Python Backend: data_aggregator.py  │            │
-│ - Fetch team stats (with caching)   │            │
-│ - Calculate TeamStatistics           │            │
-│ - Handle missing xG data             │            │
-└───────────────┬─────────────────────┘            │
                 │                                   │
                 └────────────┬──────────────────────┘
                              ▼
@@ -418,7 +556,34 @@ class TournamentSnapshot:
   "fifa_code": "MEX",
   "group": "A",
   "is_placeholder": false,
-  "api_football_id": 16
+  "api_football_id": 16,
+  "api_football_raw_id": "teams_1_2026",
+  "last_synced_at": "2026-06-01T10:00:00Z",
+  "manual_override": false,
+  "sync_conflicts": []
+}
+```
+
+**Collection**: `api_football_raw`
+```json
+{
+  "entity_type": "teams",
+  "league_id": 1,
+  "season": 2026,
+  "raw_response": {
+    "response": [
+      {
+        "team": {
+          "id": 16,
+          "name": "Mexico",
+          "code": "MEX"
+        }
+      }
+    ]
+  },
+  "fetched_at": "2026-06-01T10:00:00Z",
+  "api_version": "v3",
+  "endpoint": "/teams"
 }
 ```
 
@@ -433,7 +598,11 @@ class TournamentSnapshot:
   "stage_id": 1,
   "kickoff": "2026-06-12T15:00:00Z",
   "label": "Mexico vs Poland",
-  "api_football_fixture_id": 12345
+  "api_football_fixture_id": 12345,
+  "api_football_raw_id": "fixtures_1_2026",
+  "last_synced_at": "2026-06-01T10:00:00Z",
+  "manual_override": false,
+  "sync_conflicts": []
 }
 ```
 

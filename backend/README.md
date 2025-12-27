@@ -5,37 +5,44 @@ AI-powered prediction engine for the FIFA World Cup 2026, built with Python, Fas
 ## 🏗️ Architecture Overview
 
 ```
-┌─────────────────┐
-│   FastAPI API   │
-│  (Cloud Run)    │
-└────────┬────────┘
+┌─────────────────────────────────────┐
+│   FastAPI API (Cloud Run)           │
+│   - Tournament structure endpoints  │
+│   - AI prediction endpoints         │
+│   - API-Football sync endpoints     │
+└────────┬────────────────────────────┘
          │
-    ┌────┴────┐
-    │         │
-┌───▼───┐ ┌──▼────────┐
-│SQLite │ │Firestore  │
-│ (DB)  │ │ (Cache)   │
-└───┬───┘ └───────────┘
-    │
-┌───▼───────────────────────────┐
-│ Prediction Pipeline:          │
-│ 1. FIFA Engine (Standings)    │
-│ 2. Data Aggregator (Stats)    │
-│ 3. AI Agent (Gemini)          │
-│ 4. Firestore Publisher        │
-└───────────────────────────────┘
+         ▼
+┌─────────────────────────────────────┐
+│   Firestore (Primary Database)      │
+│   - teams (48 teams)                │
+│   - matches (104 fixtures)          │
+│   - api_football_raw (audit trail)  │
+│   - predictions/latest (hot data)   │
+└────────┬────────────────────────────┘
+         │
+    ┌────┴────────────┐
+    │                 │
+    ▼                 ▼
+┌───────────┐   ┌──────────────┐
+│API-Football│   │ Gemini AI    │
+│(xG, Stats) │   │(Predictions) │
+└───────────┘   └──────────────┘
 ```
 
 ### Core Philosophy
 
-**"Logic in Python, Magic in AI"**
+**"Single Source of Truth in Firestore, Enhanced by External APIs"**
 
+- **Firestore**: Primary database for all tournament data (teams, matches, predictions)
+- **API-Football**: External data source for team statistics and fixtures (synced to Firestore)
 - **Python**: Calculates group standings, third-place qualifiers, knockout brackets using FIFA rules
 - **AI**: Generates match predictions based on team statistics and form
 
 ### Key Components
 
-- **`db_manager.py`**: SQLite interface for tournament structure (teams, matches, venues)
+- **`firestore_manager.py`**: Firestore interface for teams, matches, and predictions with smart caching
+- **`api_football_sync.py`**: Syncs teams and fixtures from API-Football to Firestore with conflict resolution
 - **`fifa_engine.py`**: FIFA World Cup rules engine (standings, tiebreakers, bracket resolution)
 - **`data_aggregator.py`**: Team statistics from API-Football (xG, form, clean sheets)
 - **`ai_agent.py`**: Gemini AI prediction service with retry/fallback logic
@@ -83,7 +90,13 @@ AI-powered prediction engine for the FIFA World Cup 2026, built with Python, Fas
    CACHE_TTL_HOURS=24
    ```
 
-4. **Run tests**:
+4. **Initialize Firestore with tournament data**:
+   ```bash
+   # Note: Tournament data (teams, matches) should be loaded into Firestore
+   # via the Firebase Admin SDK or Firebase Console before running the backend
+   ```
+
+5. **Run tests**:
    ```bash
    pytest
    
@@ -91,20 +104,28 @@ AI-powered prediction engine for the FIFA World Cup 2026, built with Python, Fas
    pytest --cov=src --cov-report=html
    ```
 
-5. **Run the server locally**:
+6. **Run the server locally**:
    ```bash
    uvicorn src.main:app --reload
    
    # Server will start at http://localhost:8000
    ```
 
-6. **Test the API**:
+7. **Test the API**:
    ```bash
    # Health check
    curl http://localhost:8000/health
    
-   # Trigger prediction update
+   # Load tournament structure
+   curl -X POST http://localhost:8000/api/update-tournament
+   
+   # Generate AI predictions
    curl -X POST http://localhost:8000/api/update-predictions
+   
+   # Sync teams from API-Football
+   curl -X POST http://localhost:8000/api/sync-api-football \
+     -H "Content-Type: application/json" \
+     -d '{"entity_type": "teams", "league_id": 1, "season": 2026}'
    ```
 
 ## 📡 API Endpoints
@@ -116,22 +137,41 @@ Health check endpoint for monitoring and load balancers.
 **Response**:
 ```json
 {
-  "status": "ok",
+  "status": "healthy",
   "firestore": "ok",
-  "cache_size": 48,
+  "teams_count": 48,
+  "cache_size": 0,
   "timestamp": "2026-06-11T10:00:00Z"
+}
+```
+
+### `POST /api/update-tournament`
+
+Loads tournament structure and publishes to Firestore (without AI predictions):
+1. Load teams and matches from Firestore
+2. Calculate group standings using FIFA rules
+3. Resolve knockout bracket matchups
+4. Publish snapshot to Firestore
+
+**Response**:
+```json
+{
+  "status": "success",
+  "updated_at": "2026-06-11T10:00:00Z",
+  "groups_calculated": 12,
+  "bracket_matches_resolved": 56,
+  "elapsed_seconds": 2.5,
+  "errors": null
 }
 ```
 
 ### `POST /api/update-predictions`
 
-Triggers the full prediction pipeline:
-1. Load tournament structure from Firestore
-2. Calculate group standings using FIFA rules
-3. Fetch team statistics from API-Football (with caching)
-4. Generate AI predictions using Gemini
-5. Resolve knockout bracket matchups
-6. Publish predictions to Firestore
+Generates and publishes AI predictions for all matches:
+1. Fetch existing tournament data from Firestore
+2. Fetch team statistics from API-Football (with caching)
+3. Generate AI predictions using Gemini
+4. Update Firestore with predictions
 
 **Response**:
 ```json
@@ -139,7 +179,14 @@ Triggers the full prediction pipeline:
   "status": "success",
   "updated_at": "2026-06-11T10:00:00Z",
   "predictions_generated": 104,
-  "errors": []
+  "gemini_success": 100,
+  "gemini_fallback": 4,
+  "firestore_cache_hits": 40,
+  "firestore_cache_misses": 8,
+  "predictions_cached": 50,
+  "predictions_regenerated": 54,
+  "elapsed_seconds": 120.5,
+  "errors": null
 }
 ```
 
@@ -147,8 +194,38 @@ Triggers the full prediction pipeline:
 ```json
 {
   "status": "error",
-  "message": "Prediction pipeline failed",
-  "errors": ["API-Football rate limit exceeded"]
+  "errors": ["Prediction pipeline failed: API-Football rate limit exceeded"]
+}
+```
+
+### `POST /api/sync-api-football`
+
+Syncs teams or fixtures from API-Football to Firestore (see [SYNC_PROCESS.md](docs/SYNC_PROCESS.md) for detailed usage).
+
+**Request Body**:
+```json
+{
+  "entity_type": "teams",
+  "league_id": 1,
+  "season": 2026,
+  "force_update": false
+}
+```
+
+**Response**:
+```json
+{
+  "status": "success",
+  "entity_type": "teams",
+  "entities_added": 2,
+  "entities_updated": 46,
+  "entities_unchanged": 0,
+  "conflicts_detected": 0,
+  "conflicts_resolved": 0,
+  "changes_detected": 48,
+  "raw_document_id": "teams_1_2026",
+  "synced_at": "2026-06-01T10:00:00Z",
+  "errors": null
 }
 ```
 
@@ -179,15 +256,80 @@ Triggers the full prediction pipeline:
 
 ### Firestore Schema
 
+**Primary Collections**:
+- `teams`: All tournament teams with sync metadata
+- `matches`: All fixtures with sync metadata
+- `api_football_raw`: Raw API responses for audit trail and rollback
+
+**Cache Collections**:
+- `team_stats`: Cached team statistics (24h TTL)
+- `match_predictions`: Cached predictions (invalidated on stats change)
+
 **Main Document** (Hot Data):
 - Path: `predictions/latest`
-- Contents: Groups, bracket, AI summary, favorites, dark horses
+- Contents: Groups, bracket, matches, predictions, AI summary, favorites, dark horses
 - Max size: Keep under 1MB (Firestore limit)
 
 **Sub-collections** (Cold Data):
 - Path: `matches/{match_id}/history/{timestamp}`
 - Purpose: Historical prediction changes
 - Optimization: Diff check before writing (only save if prediction changed)
+
+## 🔄 API-Football Sync
+
+The backend syncs tournament data from API-Football to Firestore, providing:
+- **Raw API Response Storage**: Complete audit trail for debugging and rollback
+- **Change Detection**: Only updates entities that have changed
+- **Conflict Resolution**: Preserves manual overrides with `manual_override` flag
+- **Backward Compatibility**: Works with existing Firestore documents
+
+### Basic Sync Commands
+
+**Sync Teams**:
+```bash
+curl -X POST http://localhost:8000/api/sync-api-football \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_type": "teams",
+    "league_id": 1,
+    "season": 2026,
+    "force_update": false
+  }'
+```
+
+**Sync Fixtures**:
+```bash
+curl -X POST http://localhost:8000/api/sync-api-football \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_type": "fixtures",
+    "league_id": 1,
+    "season": 2026,
+    "force_update": false
+  }'
+```
+
+**Force Update (Override Manual Changes)**:
+```bash
+curl -X POST http://localhost:8000/api/sync-api-football \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_type": "teams",
+    "league_id": 1,
+    "season": 2026,
+    "force_update": true
+  }'
+```
+
+### Sync Process Details
+
+For comprehensive documentation on the sync process, including:
+- Conflict resolution workflow
+- Troubleshooting common errors
+- How to rollback using raw collection
+- Usage examples for different scenarios
+
+**See**: [`docs/SYNC_PROCESS.md`](docs/SYNC_PROCESS.md)
 
 ## 🧪 Testing
 
@@ -328,9 +470,9 @@ Based on typical execution with cache hits:
 
 | Component | Time | Notes |
 |-----------|------|-------|
-| SQLite queries | < 1 second | All tournament structure |
+| Firestore queries | < 1 second | All tournament structure |
 | API-Football fetches (48 teams) | ~24 seconds | With 0.5s delay (first run) |
-| API-Football fetches (cached) | < 1 second | Subsequent runs within 24h |
+| API-Football fetches (cached) | < 1 second | Subsequent runs within 24h (Firestore cache) |
 | FIFA engine calculations | < 5 seconds | Standings + bracket |
 | Gemini AI predictions (104 matches) | 2-3 minutes | Rate limited by AI API |
 | Firestore writes | < 5 seconds | Main doc + diffs |
@@ -374,6 +516,7 @@ When teams have equal points in group standings:
 
 - **API Contracts**: See `docs/api.md`
 - **Data Model**: See `docs/data-model.md`
+- **Sync Process**: See `docs/SYNC_PROCESS.md`
 - **Deployment Guide**: See `DEPLOYMENT.md`
 - **Project Constitution**: See `../RULES.md`
 
