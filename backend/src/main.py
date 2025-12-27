@@ -14,8 +14,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security.api_key import APIKeyHeader
 from pydantic import BaseModel
 
 from src.ai_agent import AIAgent
@@ -64,7 +65,24 @@ app = FastAPI(
     version="1.0.1",
 )
 
+# API Key security scheme
+API_KEY_NAME = "X-API-KEY"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+
+async def get_api_key(api_key: str = Security(api_key_header)):
+    """Validate the X-API-KEY header."""
+    if config.BACKEND_API_KEY and api_key != config.BACKEND_API_KEY:
+        logger.warning(f"Invalid API key provided: {api_key[:4] if api_key else 'None'}...")
+        raise HTTPException(
+            status_code=403,
+            detail="Could not validate credentials",
+        )
+    return api_key
+
+
 # Configure CORS middleware (allow all origins in development)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # TODO: Restrict in production
@@ -146,7 +164,7 @@ def health_check() -> Dict[str, Any]:
         }
 
 
-@app.post("/api/update-tournament")
+@app.post("/api/update-tournament", dependencies=[Depends(get_api_key)])
 def update_tournament() -> Dict[str, Any]:
     """
     Load and publish tournament structure (groups, teams, matches).
@@ -458,7 +476,7 @@ def update_tournament() -> Dict[str, Any]:
         )
 
 
-@app.post("/api/update-predictions")
+@app.post("/api/update-predictions", dependencies=[Depends(get_api_key)])
 def update_predictions() -> Dict[str, Any]:
     """
     Generate and publish AI predictions for matches.
@@ -1038,7 +1056,7 @@ def update_predictions() -> Dict[str, Any]:
         )
 
 
-@app.post("/api/sync-api-football")
+@app.post("/api/sync-api-football", dependencies=[Depends(get_api_key)])
 def sync_api_football(request: SyncRequest) -> Dict[str, Any]:
     """
     Sync teams or fixtures from API-Football to Firestore.
@@ -1120,7 +1138,7 @@ def sync_api_football(request: SyncRequest) -> Dict[str, Any]:
         )
 
 
-@app.post("/api/sync-match-flags")
+@app.post("/api/sync-match-flags", dependencies=[Depends(get_api_key)])
 async def sync_match_flags():
     """
     Sync has_real_data flags from predictions to matches array.
@@ -1197,7 +1215,7 @@ async def sync_match_flags():
         )
 
 
-@app.post("/api/sync-fifa-rankings")
+@app.post("/api/sync-fifa-rankings", dependencies=[Depends(get_api_key)])
 def sync_fifa_rankings(request: SyncFIFARankingsRequest) -> Dict[str, Any]:
     """
     Manually trigger FIFA world rankings sync.

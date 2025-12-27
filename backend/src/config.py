@@ -22,6 +22,7 @@ class Config:
     # Required API keys
     API_FOOTBALL_KEY: str
     GEMINI_API_KEY: str
+    BACKEND_API_KEY: Optional[str]
 
     # Firebase/Firestore configuration (project: vmkula)
     FIRESTORE_PROJECT_ID: str
@@ -58,6 +59,7 @@ class Config:
         self.FIRESTORE_PROJECT_ID = os.getenv(
             "FIRESTORE_PROJECT_ID", "test-project" if is_test else ""
         )
+        self.BACKEND_API_KEY = os.getenv("BACKEND_API_KEY")
         self.GOOGLE_APPLICATION_CREDENTIALS = os.getenv(
             "GOOGLE_APPLICATION_CREDENTIALS"
         )

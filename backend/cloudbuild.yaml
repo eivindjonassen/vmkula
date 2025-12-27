@@ -43,7 +43,7 @@ steps:
       - '--max-instances=5'
       - '--timeout=300s'
       - '--set-env-vars=PYTHONUNBUFFERED=1'
-      - '--set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,API_FOOTBALL_KEY=API_FOOTBALL_KEY:latest,FIRESTORE_PROJECT_ID=FIRESTORE_PROJECT_ID:latest'
+      - '--set-secrets=GEMINI_API_KEY=GEMINI_API_KEY:latest,API_FOOTBALL_KEY=API_FOOTBALL_KEY:latest,FIRESTORE_PROJECT_ID=FIRESTORE_PROJECT_ID:latest,BACKEND_API_KEY=BACKEND_API_KEY:latest'
       - '--service-account=vmkula-backend-sa@$PROJECT_ID.iam.gserviceaccount.com'
 
 # Store images in Artifact Registry

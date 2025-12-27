@@ -444,10 +444,12 @@ export function clearCache(): void {
 function triggerBackendRefresh(): void {
 	const backendUrl =
 		process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+	const apiKey = process.env.NEXT_PUBLIC_BACKEND_API_KEY;
 
 	console.log("🔄 Triggering backend refresh...");
 	fetch(`${backendUrl}/api/update-tournament`, {
 		method: "POST",
+		headers: apiKey ? { "X-API-KEY": apiKey } : {},
 	}).catch((error) => {
 		console.warn("❌ Failed to trigger backend refresh:", error);
 	});
