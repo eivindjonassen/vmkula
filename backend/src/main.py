@@ -162,9 +162,7 @@ def update_tournament() -> Dict[str, Any]:
                 id=t["id"],
                 name=t["name"],
                 fifa_code=t["fifa_code"],
-                group_letter=t[
-                    "group"
-                ],  # Firestore uses 'group', DBManager uses 'group_letter'
+                group_letter=t["group"],
                 is_placeholder=t.get("is_placeholder", False),
                 api_football_id=t.get("api_football_id"),
             )
@@ -185,12 +183,8 @@ def update_tournament() -> Dict[str, Any]:
                 away_team_id=m.get("away_team_id"),
                 venue=m["venue"],
                 stage_id=m["stage_id"],
-                kickoff_at=m[
-                    "kickoff"
-                ],  # Firestore uses 'kickoff', DBManager uses 'kickoff_at'
-                match_label=m[
-                    "label"
-                ],  # Firestore uses 'label', DBManager uses 'match_label'
+                kickoff_at=m["kickoff"],
+                match_label=m["label"],
             )
             for m in matches_data
         ]

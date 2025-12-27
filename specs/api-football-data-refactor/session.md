@@ -8,18 +8,19 @@
 - **Phase**: implement
 - **Status**: Active
 - **Active Task**:
-  - **Task ID**: T002
-  - **Description**: Delete broken Norway integration test
-  - **Progress**: 1/28 tasks complete (4%)
+  - **Task ID**: T003
+  - **Description**: Remove DBManager comments from main.py
+  - **Progress**: 2/28 tasks complete (7%)
 
 ## 📝 Recent Session Context
 
 ### Session History (Last 5)
 
-1. **2025-12-27** - Implement Phase 1: Completed T001 - Deleted migrate_to_firestore.py and other legacy files. 1/28 tasks complete (4%).
-2. **2025-12-27** - Tasks: Created 28 tasks across 5 phases for api-football-data-refactor. 18 tasks can run in parallel. Following TDD approach with tests before implementation.
-3. **2025-12-27** - Plan: Completed technical planning for api-football-data-refactor. Dual-cache elimination + legacy cleanup approach.
-4. **2025-12-27** - Spec: Created specification for api-football-data-refactor. Refactoring data architecture to use API-Football as single source of truth, eliminating SQLite dependencies.
+1. **2025-12-27** - Implement Phase 1: Completed T002 - Deleted test_norway_integration.py. 2/28 tasks complete (7%).
+2. **2025-12-27** - Implement Phase 1: Completed T001 - Deleted migrate_to_firestore.py and other legacy files. 1/28 tasks complete (4%).
+3. **2025-12-27** - Tasks: Created 28 tasks across 5 phases for api-football-data-refactor. 18 tasks can run in parallel. Following TDD approach with tests before implementation.
+4. **2025-12-27** - Plan: Completed technical planning for api-football-data-refactor. Dual-cache elimination + legacy cleanup approach.
+5. **2025-12-27** - Spec: Created specification for api-football-data-refactor. Refactoring data architecture to use API-Football as single source of truth, eliminating SQLite dependencies.
 
 
 ### Context Carryover
@@ -88,7 +89,7 @@
 - **Specification**: ✓ Complete
 - **Planning**: ✓ Complete
 - **Tasks**: ✓ Complete
-- **Implementation**: 1/28 tasks complete (4%)
+- **Implementation**: 2/28 tasks complete (7%)
 
 ### Phase Breakdown
 
@@ -98,20 +99,20 @@
 
 #### Latest Checkpoint
 
-**CP-005** (2025-12-27 01:52): Task T001 complete - migrate_to_firestore.py deleted
+**CP-006** (2025-12-27 01:53): Task T002 complete - test_norway_integration.py deleted
   - **Phase**: implement
   - **Status**: Complete
-  - **Artifacts**: Deleted migrate_to_firestore.py and legacy files
+  - **Artifacts**: Deleted test_norway_integration.py
   - **Dependencies**: None
-  - **Next**: `/implement api-football-data-refactor T002` to continue Phase 1
+  - **Next**: `/implement api-football-data-refactor T003` to continue Phase 1
 
 #### Checkpoint History
 
-1. **CP-005** (2025-12-27 01:52): Task T001 complete - migrate_to_firestore.py deleted
-2. **CP-004** (2025-12-27 01:39): Tasks breakdown complete, T001-T028 ready
-3. **CP-003** (2025-12-27 01:26): Plan validated, ready for tasks
-4. **CP-002** (2025-12-27 01:14): Spec phase complete, validated
-5. **CP-001** (2025-12-27 01:14): Session initialized for api-football-data-refactor
+1. **CP-006** (2025-12-27 01:53): Task T002 complete - test_norway_integration.py deleted
+2. **CP-005** (2025-12-27 01:52): Task T001 complete - migrate_to_firestore.py deleted
+3. **CP-004** (2025-12-27 01:39): Tasks breakdown complete, T001-T028 ready
+4. **CP-003** (2025-12-27 01:26): Plan validated, ready for tasks
+5. **CP-002** (2025-12-27 01:14): Spec phase complete, validated
 
 ## 🔄 Next Actions
 
@@ -138,8 +139,9 @@ None
 ### Key Files Modified
 
 - `backend/migrate_to_firestore.py` - Deleted (T001)
-- `specs/api-football-data-refactor/tasks.md` - Updated task status (T001)
-- `specs/api-football-data-refactor/session.md` - Session updates (T001)
+- `backend/test_norway_integration.py` - Deleted (T002)
+- `specs/api-football-data-refactor/tasks.md` - Updated task statuses (T001, T002)
+- `specs/api-football-data-refactor/session.md` - Session updates (T001, T002)
 
 ### Important References
 
