@@ -16,13 +16,18 @@
   - Private methods: `_leading_underscore`
 
 ### TypeScript/JavaScript (Frontend)
-- **Formatter**: Prettier (via Next.js defaults)
-- **Linter**: ESLint (next/core-web-vitals config)
+- **Formatter**: Biome (replaces Prettier)
+- **Linter**: Biome (replaces ESLint)
+- **Configuration**: `frontend/biome.json`
 - **Naming Conventions**:
   - Functions/variables: `camelCase`
   - Components: `PascalCase`
   - Constants: `UPPER_SNAKE_CASE`
   - Types/Interfaces: `PascalCase`
+- **Scripts**:
+  - `npm run lint` - Check for issues
+  - `npm run lint:fix` - Auto-fix issues
+  - `npm run format` - Format code
 
 ---
 

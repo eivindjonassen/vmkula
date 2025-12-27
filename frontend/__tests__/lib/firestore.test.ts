@@ -1,97 +1,112 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchLatestPredictions } from '../../lib/firestore'
+import type { DocumentSnapshot } from "firebase/firestore";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fetchLatestPredictions } from "../../lib/firestore";
 
 // Mock firebase/firestore
-vi.mock('firebase/firestore', () => ({
-  getFirestore: vi.fn(),
-  doc: vi.fn(),
-  getDoc: vi.fn(),
-}))
+vi.mock("firebase/firestore", () => ({
+	getFirestore: vi.fn(),
+	doc: vi.fn(),
+	getDoc: vi.fn(),
+}));
 
-describe('firestore lib', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-  })
+// Helper to create mock document snapshots
+function createMockDocSnapshot(
+	exists: boolean,
+	data?: Record<string, unknown>,
+): Partial<DocumentSnapshot> {
+	return {
+		exists: () => exists,
+		data: () => data,
+	};
+}
 
-  it('fetches predictions/latest document', async () => {
-    const { getDoc } = await import('firebase/firestore')
-    const mockData = {
-      updatedAt: new Date().toISOString(),
-      groups: {},
-      bracket: [],
-    }
-    vi.mocked(getDoc).mockResolvedValueOnce({
-      exists: () => true,
-      data: () => mockData,
-    } as any)
+describe("firestore lib", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.useFakeTimers();
+	});
 
-    const result = await fetchLatestPredictions()
-    expect(result).toEqual(mockData)
-  })
+	it("fetches predictions/latest document", async () => {
+		const { getDoc } = await import("firebase/firestore");
+		const mockData = {
+			updatedAt: new Date().toISOString(),
+			groups: {},
+			bracket: [],
+		};
+		vi.mocked(getDoc).mockResolvedValueOnce(
+			createMockDocSnapshot(true, mockData) as DocumentSnapshot,
+		);
 
-  it('returns null when document doesn\'t exist', async () => {
-    const { getDoc } = await import('firebase/firestore')
-    vi.mocked(getDoc).mockResolvedValueOnce({
-      exists: () => false,
-    } as any)
+		const result = await fetchLatestPredictions();
+		// The function transforms data, so we check key properties instead
+		expect(result).not.toBeNull();
+		expect(result?.updatedAt).toEqual(mockData.updatedAt);
+		expect(result?.groups).toEqual({});
+		expect(result?.bracket).toEqual([]);
+	});
 
-    const result = await fetchLatestPredictions()
-    expect(result).toBeNull()
-  })
+	it("returns null when document doesn't exist", async () => {
+		const { getDoc } = await import("firebase/firestore");
+		vi.mocked(getDoc).mockResolvedValueOnce(
+			createMockDocSnapshot(false) as DocumentSnapshot,
+		);
 
-  it('detects stale data and triggers refresh', async () => {
-    const { getDoc } = await import('firebase/firestore')
-    
-    // Set current time
-    const now = new Date('2026-06-25T12:00:00Z')
-    vi.setSystemTime(now)
-    
-    // Stale data: 3 hours old (threshold is 2 hours)
-    const staleTime = new Date('2026-06-25T09:00:00Z').toISOString()
-    const mockData = {
-      updatedAt: staleTime,
-      groups: {},
-    }
-    
-    vi.mocked(getDoc).mockResolvedValueOnce({
-      exists: () => true,
-      data: () => mockData,
-    } as any)
+		// Force refresh to skip cache
+		const result = await fetchLatestPredictions({ forceRefresh: true });
+		expect(result).toBeNull();
+	});
 
-    // Mock global fetch for backend refresh
-    global.fetch = vi.fn().mockResolvedValueOnce({ ok: true })
+	it("detects stale data and triggers refresh", async () => {
+		const { getDoc } = await import("firebase/firestore");
 
-    await fetchLatestPredictions()
+		// Set current time
+		const now = new Date("2026-06-25T12:00:00Z");
+		vi.setSystemTime(now);
 
-    // Should have triggered refresh
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/update-predictions'),
-      expect.objectContaining({ method: 'POST' })
-    )
-  })
+		// Stale data: 3 hours old (threshold is 2 hours)
+		const staleTime = new Date("2026-06-25T09:00:00Z").toISOString();
+		const mockData = {
+			updatedAt: staleTime,
+			groups: {},
+		};
 
-  it('does NOT trigger refresh when data is fresh', async () => {
-    const { getDoc } = await import('firebase/firestore')
-    
-    const now = new Date('2026-06-25T12:00:00Z')
-    vi.setSystemTime(now)
-    
-    // Fresh data: 1 hour old
-    const freshTime = new Date('2026-06-25T11:00:00Z').toISOString()
-    const mockData = {
-      updatedAt: freshTime,
-    }
-    
-    vi.mocked(getDoc).mockResolvedValueOnce({
-      exists: () => true,
-      data: () => mockData,
-    } as any)
+		vi.mocked(getDoc).mockResolvedValueOnce(
+			createMockDocSnapshot(true, mockData) as DocumentSnapshot,
+		);
 
-    global.fetch = vi.fn()
+		// Mock global fetch for backend refresh
+		global.fetch = vi.fn().mockResolvedValueOnce({ ok: true });
 
-    await fetchLatestPredictions()
+		// Force refresh to skip cache and fetch from Firestore
+		await fetchLatestPredictions({ forceRefresh: true });
 
-    expect(global.fetch).not.toHaveBeenCalled()
-  })
-})
+		// Should have triggered refresh (uses /api/update-tournament endpoint)
+		expect(global.fetch).toHaveBeenCalledWith(
+			expect.stringContaining("/api/update-tournament"),
+			expect.objectContaining({ method: "POST" }),
+		);
+	});
+
+	it("does NOT trigger refresh when data is fresh", async () => {
+		const { getDoc } = await import("firebase/firestore");
+
+		const now = new Date("2026-06-25T12:00:00Z");
+		vi.setSystemTime(now);
+
+		// Fresh data: 1 hour old
+		const freshTime = new Date("2026-06-25T11:00:00Z").toISOString();
+		const mockData = {
+			updatedAt: freshTime,
+		};
+
+		vi.mocked(getDoc).mockResolvedValueOnce(
+			createMockDocSnapshot(true, mockData) as DocumentSnapshot,
+		);
+
+		global.fetch = vi.fn();
+
+		await fetchLatestPredictions();
+
+		expect(global.fetch).not.toHaveBeenCalled();
+	});
+});

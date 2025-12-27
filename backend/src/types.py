@@ -32,3 +32,4 @@ class Match:
     stage_id: int
     kickoff_at: str
     match_label: str
+    api_football_fixture_id: Optional[int] = None

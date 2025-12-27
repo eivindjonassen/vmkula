@@ -30,6 +30,7 @@ from src.exceptions import (
     GeminiFailureError,
 )
 from src.fifa_engine import FifaEngine
+from src.fifa_ranking_scraper import FIFARankingScraper  # type: ignore[import-not-found]
 from src.firestore_publisher import FirestorePublisher
 
 # Configure logging
@@ -48,6 +49,12 @@ class SyncRequest(BaseModel):
     league_id: int
     season: int
     force_update: bool = False
+
+
+class SyncFIFARankingsRequest(BaseModel):
+    """Request model for FIFA rankings sync endpoint."""
+
+    force_refresh: bool = False
 
 
 # Initialize FastAPI application
@@ -101,12 +108,14 @@ def health_check() -> Dict[str, Any]:
 
     try:
         # Check Firestore connection (now our primary database)
+        teams_count = 0
         try:
             fs_manager = FirestoreManager()
             teams = fs_manager.get_all_teams()
-            firestore_status = "ok" if len(teams) > 0 else "error"
+            teams_count = len(teams)
+            firestore_status = "ok" if teams_count > 0 else "error"
             logger.info(
-                f"Firestore check: {firestore_status} ({len(teams)} teams loaded)"
+                f"Firestore check: {firestore_status} ({teams_count} teams loaded)"
             )
         except Exception as e:
             firestore_status = "error"
@@ -123,7 +132,7 @@ def health_check() -> Dict[str, Any]:
         return {
             "status": status,
             "firestore": firestore_status,
-            "teams_count": len(teams) if firestore_status == "ok" else 0,
+            "teams_count": teams_count,
             "cache_size": cache_size,
             "timestamp": datetime.utcnow().isoformat(),
         }
@@ -550,7 +559,7 @@ def update_predictions() -> Dict[str, Any]:
                     # Cache MISS - fetch from API-Football
                     firestore_cache_misses += 1
 
-                    if has_api_football_id:
+                    if has_api_football_id and team.api_football_id is not None:
                         # Fetch real data from API-Football (with xG enabled)
                         stats = aggregator.fetch_team_stats(
                             team.api_football_id, fetch_xg=True
@@ -608,6 +617,55 @@ def update_predictions() -> Dict[str, Any]:
             f"{firestore_cache_misses} cache misses (API calls made)"
         )
 
+        # Step 2.5: Enrich team stats with FIFA rankings
+        logger.info("Step 2.5: Enriching team stats with FIFA rankings")
+        fifa_scraper = FIFARankingScraper()
+        fifa_enriched_count = 0
+        fifa_missing_count = 0
+        
+        for team in teams:
+            if team.is_placeholder:
+                continue
+            
+            # Skip if no FIFA code available
+            if not team.fifa_code:
+                logger.debug(f"Team {team.name} has no FIFA code - skipping ranking lookup")
+                fifa_missing_count += 1
+                continue
+            
+            try:
+                # Get FIFA ranking for this team
+                ranking_data = fifa_scraper.get_ranking_for_team(team.fifa_code)
+                
+                if ranking_data:
+                    # Add FIFA ranking fields to team stats
+                    if team.id in team_stats:
+                        team_stats[team.id]["fifa_ranking"] = ranking_data.get("rank")
+                        team_stats[team.id]["fifa_points"] = ranking_data.get("points")
+                        team_stats[team.id]["fifa_confederation"] = ranking_data.get("confederation")
+                        fifa_enriched_count += 1
+                        logger.debug(
+                            f"Enriched {team.name} with FIFA ranking: #{ranking_data.get('rank')}"
+                        )
+                else:
+                    # Ranking not found - log warning but continue
+                    logger.warning(
+                        f"FIFA ranking not found for {team.name} (code: {team.fifa_code})"
+                    )
+                    fifa_missing_count += 1
+                    
+            except Exception as e:
+                # Graceful degradation - log warning but don't fail
+                logger.warning(
+                    f"Failed to get FIFA ranking for {team.name}: {e}"
+                )
+                fifa_missing_count += 1
+        
+        logger.info(
+            f"FIFA ranking enrichment: {fifa_enriched_count} teams enriched, "
+            f"{fifa_missing_count} teams missing ranking data"
+        )
+
         # Step 3: Generate AI predictions for all matches (with smart caching)
         logger.info("Step 3: Generating AI predictions with smart caching")
         agent = AIAgent()
@@ -647,19 +705,20 @@ def update_predictions() -> Dict[str, Any]:
                 if not should_regenerate:
                     # Use cached prediction
                     cached_prediction = fs_manager.get_match_prediction(match.id)
-                    predictions_cached += 1
+                    if cached_prediction is not None:
+                        predictions_cached += 1
 
-                    # Add to predictions list
-                    predictions.append(
-                        {
-                            "match_id": match.id,
-                            "match_number": match.match_number,
-                            "has_real_data": home_stats.get("has_real_data", False)
-                            and away_stats.get("has_real_data", False),
-                            **cached_prediction,
-                        }
-                    )
-                    continue
+                        # Add to predictions list
+                        predictions.append(
+                            {
+                                "match_id": match.id,
+                                "match_number": match.match_number,
+                                "has_real_data": home_stats.get("has_real_data", False)
+                                and away_stats.get("has_real_data", False),
+                                **cached_prediction,
+                            }
+                        )
+                        continue
 
                 # Need to regenerate prediction
                 predictions_regenerated += 1
@@ -746,12 +805,22 @@ def update_predictions() -> Dict[str, Any]:
         # Step 4: Fetch existing tournament data from Firestore and update with predictions
         try:
             publisher = FirestorePublisher()
+            if publisher.db is None:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Firestore client not initialized",
+                )
             # Get existing snapshot
             doc_ref = publisher.db.collection("predictions").document("latest")
             doc_snap = doc_ref.get()
 
-            if doc_snap.exists:
-                snapshot = doc_snap.to_dict()
+            if doc_snap.exists:  # type: ignore[union-attr]
+                snapshot = doc_snap.to_dict()  # type: ignore[union-attr]
+                if snapshot is None:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Tournament snapshot exists but is empty. Run /api/update-tournament first.",
+                    )
                 # Add predictions to existing snapshot
                 snapshot["predictions"] = predictions
                 snapshot["ai_summary"] = (
@@ -1065,16 +1134,26 @@ async def sync_match_flags():
 
         # Get existing snapshot from Firestore
         publisher = FirestorePublisher()
+        if publisher.db is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Firestore client not initialized",
+            )
         doc_ref = publisher.db.collection("predictions").document("latest")
         doc_snap = doc_ref.get()
 
-        if not doc_snap.exists:
+        if not doc_snap.exists:  # type: ignore[union-attr]
             raise HTTPException(
                 status_code=404,
                 detail="No predictions found. Run /api/update-predictions first.",
             )
 
-        snapshot = doc_snap.to_dict()
+        snapshot = doc_snap.to_dict()  # type: ignore[union-attr]
+        if snapshot is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Snapshot is empty",
+            )
         predictions = snapshot.get("predictions", [])
 
         if not predictions:
@@ -1115,6 +1194,100 @@ async def sync_match_flags():
         logger.error(f"Failed to sync match flags: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to sync match flags: {str(e)}"
+        )
+
+
+@app.post("/api/sync-fifa-rankings")
+def sync_fifa_rankings(request: SyncFIFARankingsRequest) -> Dict[str, Any]:
+    """
+    Manually trigger FIFA world rankings sync.
+
+    This endpoint scrapes FIFA rankings from https://inside.fifa.com/fifa-world-ranking/men
+    and stores them in Firestore with a 30-day TTL cache.
+
+    Args:
+        request: SyncFIFARankingsRequest with force_refresh option
+
+    Returns:
+        Dictionary with:
+            - success: bool
+            - teams_scraped: int
+            - duration_seconds: float
+            - fetched_at: datetime (ISO format string)
+            - cache_expires_at: datetime (ISO format string)
+            - error: str (only if failure)
+            - cached_data_available: bool (only if failure)
+
+    Raises:
+        HTTPException: 500 on scraping failures
+    """
+    logger.info(f"FIFA rankings sync requested (force_refresh={request.force_refresh})")
+    
+    try:
+        # Instantiate scraper and run scrape_and_store workflow
+        scraper = FIFARankingScraper()
+        result = scraper.scrape_and_store(force_refresh=request.force_refresh)
+        
+        # Build response
+        if result.get('success'):
+            response = {
+                "success": True,
+                "teams_scraped": result.get('teams_scraped', 0),
+                "duration_seconds": result.get('duration_seconds', 0.0),
+                "fetched_at": result.get('fetched_at').isoformat() if result.get('fetched_at') else None,
+                "cache_expires_at": result.get('cache_expires_at').isoformat() if result.get('cache_expires_at') else None,
+                "source_url": scraper.RANKINGS_URL,
+            }
+            
+            if result.get('cache_hit'):
+                response["cache_hit"] = True
+            
+            logger.info(
+                f"FIFA rankings sync SUCCESS: {result.get('teams_scraped')} teams "
+                f"in {result.get('duration_seconds'):.2f}s"
+            )
+            return response
+        else:
+            # Scraping failed - check if cached data is available
+            cached_available = False
+            try:
+                fs_manager = FirestoreManager()
+                cached_data = fs_manager.get_fifa_rankings()
+                cached_available = cached_data is not None
+            except Exception:
+                pass
+            
+            error_msg = result.get('error_message', 'Unknown error')
+            logger.error(f"FIFA rankings sync FAILED: {error_msg}")
+            
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "success": False,
+                    "error": error_msg,
+                    "teams_scraped": 0,
+                    "cached_data_available": cached_available,
+                }
+            )
+    
+    except HTTPException:
+        raise
+    except DataAggregationError as e:
+        logger.error(f"FIFA rankings sync failed with DataAggregationError: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "success": False,
+                "error": f"Failed to scrape FIFA rankings: {str(e)}",
+                "teams_scraped": 0,
+                "cached_data_available": False,
+            }
+        )
+    except Exception as e:
+        logger.error(f"FIFA rankings sync failed with unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"FIFA rankings sync failed: {str(e)}"
         )
 
 

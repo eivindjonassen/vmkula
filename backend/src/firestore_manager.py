@@ -84,8 +84,8 @@ class FirestoreManager:
         """
         doc = self.teams_collection.document(str(team_id)).get()
 
-        if doc.exists:
-            return doc.to_dict()
+        if doc.exists:  # type: ignore[union-attr]
+            return doc.to_dict()  # type: ignore[union-attr]
 
         return None
 
@@ -238,8 +238,8 @@ class FirestoreManager:
         """
         doc = self.matches_collection.document(str(match_id)).get()
 
-        if doc.exists:
-            return doc.to_dict()
+        if doc.exists:  # type: ignore[union-attr]
+            return doc.to_dict()  # type: ignore[union-attr]
 
         return None
 
@@ -412,8 +412,8 @@ class FirestoreManager:
         """Get city by ID."""
         doc = self.cities_collection.document(str(city_id)).get()
 
-        if doc.exists:
-            return doc.to_dict()
+        if doc.exists:  # type: ignore[union-attr]
+            return doc.to_dict()  # type: ignore[union-attr]
 
         return None
 
@@ -509,9 +509,9 @@ class FirestoreManager:
         # Fetch from Firestore
         doc = self.raw_api_responses_collection.document(document_id).get()
 
-        if doc.exists:
+        if doc.exists:  # type: ignore[union-attr]
             logger.info(f"Retrieved raw API response: {document_id}")
-            return doc.to_dict()
+            return doc.to_dict()  # type: ignore[union-attr]
 
         logger.info(f"Raw API response not found: {document_id}")
         return None
@@ -575,3 +575,78 @@ class FirestoreManager:
         # Create hash
         combined = "|".join(relevant_data)
         return hashlib.md5(combined.encode()).hexdigest()
+    
+    # ============================================================
+    # FIFA RANKINGS
+    # ============================================================
+    
+    def get_fifa_rankings(self) -> Optional[Dict[str, Any]]:
+        """
+        Get cached FIFA rankings data.
+        
+        Returns:
+            Dict with rankings data or None if not found
+            Format: {
+                "rankings": List[Dict],  # 211 teams
+                "fetched_at": datetime,
+                "expires_at": datetime,
+                "total_teams": int
+            }
+        """
+        doc = self.db.collection("fifa_rankings").document("latest").get()
+        
+        if doc.exists:  # type: ignore[union-attr]
+            return doc.to_dict()  # type: ignore[union-attr]
+        
+        return None
+    
+    def is_fifa_rankings_cache_valid(self) -> bool:
+        """
+        Check if cached FIFA rankings are still valid (not expired).
+        
+        Returns:
+            True if cache exists and not expired, False otherwise
+        """
+        rankings = self.get_fifa_rankings()
+        
+        if not rankings:
+            return False
+        
+        expires_at = rankings.get("expires_at")
+        
+        if not expires_at:
+            return False
+        
+        # Check if not expired
+        now = datetime.utcnow()
+        return expires_at > now
+    
+    def update_fifa_rankings(
+        self, rankings: List[Dict[str, Any]], ttl_days: int = 30
+    ) -> None:
+        """
+        Update FIFA rankings in Firestore with TTL metadata.
+        
+        Stores all 211 team rankings in a single document for cost efficiency
+        (48× cheaper than individual documents).
+        
+        Args:
+            rankings: List of team ranking dicts
+            ttl_days: Cache TTL in days (default: 30 - FIFA updates monthly)
+        """
+        now = datetime.utcnow()
+        expires_at = now + timedelta(days=ttl_days)
+        
+        data = {
+            "rankings": rankings,
+            "total_teams": len(rankings),
+            "fetched_at": now,
+            "expires_at": expires_at,
+        }
+        
+        self.db.collection("fifa_rankings").document("latest").set(data)
+        
+        logger.info(
+            f"Updated FIFA rankings: {len(rankings)} teams "
+            f"(expires: {expires_at.strftime('%Y-%m-%d')})"
+        )

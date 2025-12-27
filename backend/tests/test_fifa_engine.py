@@ -374,15 +374,15 @@ def test_away_team_win():
 def test_resolve_label_fallbacks():
     """Test _resolve_label with fallback cases."""
     engine = FifaEngine()
-    # 1. 3rd Place none qualified
+    # 1. 3rd Place none qualified - returns "TBD" when no third-place team qualified
     label = "3rd Place C/D/E"
     resolved = engine._resolve_label(label, {}, {})
-    assert resolved == label
+    assert resolved == "TBD"  # No qualified 3rd place teams in empty dict
 
-    # 2. Unknown label
+    # 2. Unknown label format - returned as-is
     label = "Final Match"
     resolved = engine._resolve_label(label, {}, {})
-    assert resolved == label
+    assert resolved == label  # Unknown format returned unchanged
 
 
 def test_calculate_predicted_standings():
