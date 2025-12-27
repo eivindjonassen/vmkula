@@ -268,11 +268,8 @@ describe("Frontend Integration: Predictions Flow", () => {
 			// Verify prediction details are displayed
 			// Note: Actual implementation may vary - check component renders successfully
 			expect(container.textContent).toContain("USA");
-			// Win probability should be displayed in some form
-			expect(
-				container.textContent?.includes("68") ||
-					container.textContent?.includes("0.68"),
-			).toBeTruthy();
+			// Predicted score should be displayed (e.g., "2-1")
+			expect(container.textContent).toContain("2-1");
 		});
 
 		it("should display confidence level", () => {
