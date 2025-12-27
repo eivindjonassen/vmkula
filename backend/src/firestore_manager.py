@@ -93,6 +93,8 @@ class FirestoreManager:
         """
         Get all teams.
 
+        Backward-compatible: Handles documents with/without sync metadata fields.
+
         Returns:
             List of team dicts
         """
@@ -100,6 +102,17 @@ class FirestoreManager:
 
         for doc in self.teams_collection.stream():
             team_data = doc.to_dict()
+
+            # Ensure backward compatibility: add default values for missing sync fields
+            if "api_football_raw_id" not in team_data:
+                team_data["api_football_raw_id"] = None
+            if "last_synced_at" not in team_data:
+                team_data["last_synced_at"] = None
+            if "manual_override" not in team_data:
+                team_data["manual_override"] = False
+            if "sync_conflicts" not in team_data:
+                team_data["sync_conflicts"] = []
+
             teams.append(team_data)
 
         # Sort by ID
@@ -142,6 +155,11 @@ class FirestoreManager:
                 "api_football_id": team.api_football_id,
                 "is_placeholder": team.is_placeholder,
                 "stats": None,  # Will be populated on first API call
+                # Sync metadata fields (backward-compatible)
+                "api_football_raw_id": None,  # Reference to raw collection document
+                "last_synced_at": None,  # ISO8601 timestamp
+                "manual_override": False,  # Manual override flag
+                "sync_conflicts": [],  # List of sync conflicts
             }
         )
 
@@ -229,6 +247,8 @@ class FirestoreManager:
         """
         Get all matches.
 
+        Backward-compatible: Handles documents with/without sync metadata fields.
+
         Returns:
             List of match dicts sorted by match_number
         """
@@ -236,6 +256,17 @@ class FirestoreManager:
 
         for doc in self.matches_collection.stream():
             match_data = doc.to_dict()
+
+            # Ensure backward compatibility: add default values for missing sync fields
+            if "api_football_raw_id" not in match_data:
+                match_data["api_football_raw_id"] = None
+            if "last_synced_at" not in match_data:
+                match_data["last_synced_at"] = None
+            if "manual_override" not in match_data:
+                match_data["manual_override"] = False
+            if "sync_conflicts" not in match_data:
+                match_data["sync_conflicts"] = []
+
             matches.append(match_data)
 
         # Sort by match number
@@ -288,6 +319,11 @@ class FirestoreManager:
                 "api_football_fixture_id": match.api_football_fixture_id,
                 "prediction": None,  # Will be generated
                 "has_real_data": False,
+                # Sync metadata fields (backward-compatible)
+                "api_football_raw_id": None,  # Reference to raw collection document
+                "last_synced_at": None,  # ISO8601 timestamp
+                "manual_override": False,  # Manual override flag
+                "sync_conflicts": [],  # List of sync conflicts
             }
         )
 

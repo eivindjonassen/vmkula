@@ -1,26 +1,35 @@
 """
 Populate Firestore with data from API-Football.
 
-This script:
-1. Adds API-Football team ID mappings for all qualified teams
-2. Fetches team statistics from API-Football for all teams with IDs
-3. Maps World Cup 2026 fixtures to API-Football fixture IDs (when available)
-4. Validates all data is correctly populated
+This script uses the new APIFootballSync module for syncing teams and fixtures.
+
+Features:
+1. Sync teams from API-Football with automatic change detection
+2. Sync fixtures from API-Football with conflict resolution
+3. Backward-compatible team ID mapping (legacy support)
+4. Progress reporting and validation
 
 Usage:
-    python populate_from_api_football.py
+    python populate_from_api_football.py [--sync-teams] [--sync-fixtures] [--force-update]
+
+Options:
+    --sync-teams: Sync teams from API-Football
+    --sync-fixtures: Sync fixtures from API-Football
+    --force-update: Force API updates even with manual overrides
 
 Requirements:
     - API-Football API key in .env (API_FOOTBALL_KEY)
     - GOOGLE_APPLICATION_CREDENTIALS set for Firestore access
 """
 
+import argparse
 import logging
 import sys
 import time
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from src.api_football_sync import APIFootballSync
 from src.config import config
 from src.data_aggregator import DataAggregator
 from src.firestore_manager import FirestoreManager
@@ -312,8 +321,169 @@ def validate_migration(firestore_db: FirestoreManager) -> bool:
         return False
 
 
+def sync_teams_from_api(
+    firestore_db: FirestoreManager, sync_handler: APIFootballSync, force_update: bool
+) -> bool:
+    """
+    Sync teams from API-Football using new sync module.
+
+    Args:
+        firestore_db: Firestore database manager
+        sync_handler: API-Football sync handler
+        force_update: Force API updates even with manual overrides
+
+    Returns:
+        True if sync succeeds
+    """
+    print("=" * 80)
+    print("SYNC TEAMS FROM API-FOOTBALL")
+    print("=" * 80)
+    print()
+    print(f"Force update: {force_update}")
+    print()
+
+    try:
+        # World Cup 2026 league ID and season
+        # TODO: Make these configurable via CLI flags
+        league_id = 1  # World Cup
+        season = 2026
+
+        print(f"Syncing teams: league_id={league_id}, season={season}")
+        print()
+
+        # Call sync_teams
+        result = sync_handler.sync_teams(
+            league_id=league_id, season=season, force_update=force_update
+        )
+
+        # Display results
+        print("Sync Results:")
+        print(f"  Status: {result.status}")
+        print(f"  Teams added: {result.entities_added}")
+        print(f"  Teams updated: {result.entities_updated}")
+        print(f"  Teams unchanged: {result.entities_unchanged}")
+        print(f"  Conflicts detected: {result.conflicts_detected}")
+        print(f"  Conflicts resolved: {result.conflicts_resolved}")
+        print(f"  Raw document ID: {result.raw_document_id}")
+        print(f"  Synced at: {result.synced_at}")
+
+        if result.errors:
+            print()
+            print("Errors:")
+            for error in result.errors:
+                print(f"  ❌ {error}")
+
+        print()
+
+        if result.status == "error":
+            print("❌ Team sync failed")
+            return False
+        elif result.status == "partial_success":
+            print("⚠️  Team sync completed with errors")
+            return True
+        else:
+            print("✅ Team sync successful")
+            return True
+
+    except Exception as e:
+        logger.error(f"Team sync failed: {e}", exc_info=True)
+        print(f"❌ Team sync failed: {e}")
+        return False
+
+
+def sync_fixtures_from_api(
+    firestore_db: FirestoreManager, sync_handler: APIFootballSync, force_update: bool
+) -> bool:
+    """
+    Sync fixtures from API-Football using new sync module.
+
+    Args:
+        firestore_db: Firestore database manager
+        sync_handler: API-Football sync handler
+        force_update: Force API updates even with manual overrides
+
+    Returns:
+        True if sync succeeds
+    """
+    print("=" * 80)
+    print("SYNC FIXTURES FROM API-FOOTBALL")
+    print("=" * 80)
+    print()
+    print(f"Force update: {force_update}")
+    print()
+
+    try:
+        # World Cup 2026 league ID and season
+        # TODO: Make these configurable via CLI flags
+        league_id = 1  # World Cup
+        season = 2026
+
+        print(f"Syncing fixtures: league_id={league_id}, season={season}")
+        print()
+
+        # Call sync_fixtures
+        result = sync_handler.sync_fixtures(
+            league_id=league_id, season=season, force_update=force_update
+        )
+
+        # Display results
+        print("Sync Results:")
+        print(f"  Status: {result.status}")
+        print(f"  Fixtures added: {result.entities_added}")
+        print(f"  Fixtures updated: {result.entities_updated}")
+        print(f"  Fixtures unchanged: {result.entities_unchanged}")
+        print(f"  Conflicts detected: {result.conflicts_detected}")
+        print(f"  Conflicts resolved: {result.conflicts_resolved}")
+        print(f"  Raw document ID: {result.raw_document_id}")
+        print(f"  Synced at: {result.synced_at}")
+
+        if result.errors:
+            print()
+            print("Errors:")
+            for error in result.errors:
+                print(f"  ❌ {error}")
+
+        print()
+
+        if result.status == "error":
+            print("❌ Fixture sync failed")
+            return False
+        elif result.status == "partial_success":
+            print("⚠️  Fixture sync completed with errors")
+            return True
+        else:
+            print("✅ Fixture sync successful")
+            return True
+
+    except Exception as e:
+        logger.error(f"Fixture sync failed: {e}", exc_info=True)
+        print(f"❌ Fixture sync failed: {e}")
+        return False
+
+
 def main():
     """Main execution function."""
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description="Populate Firestore with data from API-Football"
+    )
+    parser.add_argument(
+        "--sync-teams",
+        action="store_true",
+        help="Sync teams from API-Football",
+    )
+    parser.add_argument(
+        "--sync-fixtures",
+        action="store_true",
+        help="Sync fixtures from API-Football",
+    )
+    parser.add_argument(
+        "--force-update",
+        action="store_true",
+        help="Force API updates even with manual overrides",
+    )
+    args = parser.parse_args()
+
     print()
     print("=" * 80)
     print("API-FOOTBALL DATA POPULATION SCRIPT")
@@ -335,29 +505,53 @@ def main():
     try:
         firestore_db = FirestoreManager()
         aggregator = DataAggregator(cache_dir="backend/cache")
+        sync_handler = APIFootballSync(
+            firestore_manager=firestore_db, data_aggregator=aggregator
+        )
     except Exception as e:
         print(f"❌ Failed to initialize managers: {e}")
         return False
 
-    # Step 1: Add API-Football team IDs
-    updated_teams = add_api_football_team_ids(firestore_db)
+    # Determine what to run
+    if args.sync_teams:
+        # Use new sync module for teams
+        success = sync_teams_from_api(firestore_db, sync_handler, args.force_update)
+        if not success:
+            print("❌ Team sync failed")
+            return False
 
-    if len(updated_teams) == 0:
-        print("⚠️  No teams updated with API-Football IDs")
-        print("   Migration may have already been done, or no mappings available")
+    if args.sync_fixtures:
+        # Use new sync module for fixtures
+        success = sync_fixtures_from_api(firestore_db, sync_handler, args.force_update)
+        if not success:
+            print("❌ Fixture sync failed")
+            return False
 
-    # Step 2: Fetch team statistics
-    print("📊 Fetching statistics for ALL teams with API-Football IDs...")
-    print("   This will take approximately 6 minutes with rate limiting")
-    print()
+    # If no sync flags provided, run legacy mode
+    if not args.sync_teams and not args.sync_fixtures:
+        print("⚠️  No sync flags provided, running legacy mode")
+        print("   Use --sync-teams or --sync-fixtures for new sync module")
+        print()
 
-    fetch_team_statistics(
-        firestore_db=firestore_db,
-        aggregator=aggregator,
-        limit=None,  # Fetch all teams
-    )
+        # Step 1: Add API-Football team IDs (legacy)
+        updated_teams = add_api_football_team_ids(firestore_db)
 
-    # Step 3: Validate
+        if len(updated_teams) == 0:
+            print("⚠️  No teams updated with API-Football IDs")
+            print("   Migration may have already been done, or no mappings available")
+
+        # Step 2: Fetch team statistics (legacy)
+        print("📊 Fetching statistics for ALL teams with API-Football IDs...")
+        print("   This will take approximately 6 minutes with rate limiting")
+        print()
+
+        fetch_team_statistics(
+            firestore_db=firestore_db,
+            aggregator=aggregator,
+            limit=None,  # Fetch all teams
+        )
+
+    # Validate
     if not validate_migration(firestore_db):
         print("❌ Validation failed")
         return False
@@ -370,7 +564,8 @@ def main():
     print("Next steps:")
     print("  1. Review the data in Firestore Console")
     print("  2. Run backend tests to verify functionality")
-    print("  3. Increase fetch limit to populate all teams")
+    if not args.sync_teams and not args.sync_fixtures:
+        print("  3. Try --sync-teams or --sync-fixtures for new sync module")
     print()
 
     return True
