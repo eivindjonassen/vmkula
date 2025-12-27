@@ -182,6 +182,7 @@
 
 ### T014: Extend FirestoreManager with raw collection methods
 **File**: `backend/src/firestore_manager.py`
+**Status**: ✅ Complete
 **Description**: Add methods for api_football_raw collection operations.
 - Add `api_football_raw_collection` property (reference to collection)
 - Implement `store_raw_api_response()` method:
@@ -200,6 +201,7 @@
 
 ### T015: Create APIFootballSync class skeleton
 **File**: `backend/src/api_football_sync.py` (new)
+**Status**: ✅ Complete
 **Description**: Create new sync module with class structure and data classes.
 - Import required modules (typing, dataclasses, logging)
 - Create `SyncResult` dataclass with fields:
@@ -222,6 +224,7 @@
 
 ### T016: Implement detect_changes method
 **File**: `backend/src/api_football_sync.py`
+**Status**: ✅ Complete
 **Description**: Implement change detection logic.
 - Implement `detect_changes(raw_entities, existing_entities)` method
 - Create mapping of existing entities by ID for fast lookup
@@ -241,6 +244,7 @@
 
 ### T017: Implement resolve_conflicts method
 **File**: `backend/src/api_football_sync.py`
+**Status**: ✅ Complete
 **Description**: Implement conflict resolution logic.
 - Implement `resolve_conflicts(conflicts, force_update)` method
 - Iterate through conflicts list:
@@ -260,6 +264,7 @@
 
 ### T018: Implement sync_teams method
 **File**: `backend/src/api_football_sync.py`
+**Status**: ✅ Complete
 **Description**: Implement teams sync orchestration logic.
 - Implement `sync_teams(league_id, season, force_update)` method
 - Step 1: Fetch teams from API-Football using data_aggregator
@@ -281,6 +286,7 @@
 
 ### T019: Implement sync_fixtures method
 **File**: `backend/src/api_football_sync.py`
+**Status**: ✅ Complete
 **Description**: Implement fixtures sync orchestration logic.
 - Implement `sync_fixtures(league_id, season, force_update)` method
 - Similar process to sync_teams but for fixtures:
@@ -304,6 +310,7 @@
 
 ### T020: Add sync endpoint to FastAPI
 **File**: `backend/src/main.py`
+**Status**: ✅ Complete
 **Description**: Add `POST /api/sync-api-football` endpoint to FastAPI application.
 - Import APIFootballSync from api_football_sync module
 - Create request model (SyncRequest) with pydantic:
