@@ -360,6 +360,35 @@ pytest tests/test_integration.py
 - **Integration Tests**: `test_integration.py` for full pipeline
 - **TDD Approach**: Tests created before implementation
 
+## 🔍 Code Quality Checks
+
+### Run All Checks
+
+```bash
+# Type checking with mypy
+python3 -m mypy src --ignore-missing-imports
+
+# Code formatting with black (check only)
+python3 -m black --check src tests
+
+# Code formatting with black (auto-fix)
+python3 -m black src tests
+```
+
+### Prerequisites
+
+Ensure you have development dependencies installed:
+```bash
+pip install -r requirements-dev.txt
+```
+
+The development requirements include:
+- `pytest` - Test runner
+- `pytest-cov` - Coverage reporting
+- `mypy` - Static type checking
+- `black` - Code formatting
+- `responses` - HTTP mocking for tests
+
 ## 🐳 Docker Deployment
 
 ### Build Docker Image

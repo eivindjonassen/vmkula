@@ -6,10 +6,10 @@
 
 - **Feature**: fifa-ranking
 - **Phase**: implement
-- **Status**: Idle
+- **Status**: Active
 - **Active Task**:
-  - **Task ID**: Phase 2 complete
-  - **Description**: All Phase 2 TDD tests written (T004-T012)
+  - **Task ID**: T013
+  - **Description**: Implement FIFARankingScraper class initialization
   - **Progress**: 12/21 tasks complete (57%)
 
 ## 📝 Recent Session Context
