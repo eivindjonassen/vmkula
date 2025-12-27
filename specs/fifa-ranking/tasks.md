@@ -10,6 +10,7 @@
 ## Phase 1: Setup & Dependencies (3 tasks)
 
 ### T001: Add BeautifulSoup4 and lxml dependencies
+**Status**: ✅ Complete
 **File**: `backend/requirements.txt`  
 **Description**: Add HTML parsing libraries for FIFA rankings scraping:
 - Add `beautifulsoup4>=4.12.0` for HTML parsing
@@ -19,6 +20,7 @@
 **Parallel**: Yes [P]
 
 ### T002: Add responses library for HTTP mocking in tests
+**Status**: ✅ Complete
 **File**: `backend/requirements-dev.txt`  
 **Description**: Add HTTP mocking library for test fixtures:
 - Add `responses>=0.24.0` for mocking HTTP requests in tests
@@ -28,6 +30,7 @@
 **Parallel**: Yes [P]
 
 ### T003: Install new dependencies and verify imports
+**Status**: ✅ Complete
 **File**: `backend/`  
 **Description**: Install newly added dependencies and verify they work:
 - Run `pip install -r requirements.txt` to install beautifulsoup4 and lxml
