@@ -26,9 +26,18 @@ def test_config_load_from_env():
 
 def test_config_missing_vars_raises_error():
     """Test that missing required variables raises ValueError"""
-    with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(ValueError, match="Missing required environment variables"):
-            Config()
+    import sys
+    # Config skips validation when pytest is in sys.modules, so we temporarily remove it
+    original_modules = sys.modules.copy()
+    pytest_module = sys.modules.pop("pytest", None)
+    try:
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(ValueError, match="Missing required environment variables"):
+                Config()
+    finally:
+        # Restore pytest module
+        if pytest_module:
+            sys.modules["pytest"] = pytest_module
 
 
 def test_config_defaults():

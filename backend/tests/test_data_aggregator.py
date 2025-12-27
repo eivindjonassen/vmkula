@@ -208,7 +208,8 @@ def test_retry_exponential_backoff(monkeypatch):
     )
     aggregator.fetch_from_api = mock_api
 
-    result = aggregator.fetch_team_stats(1)
+    # Pass fetch_xg=False to avoid needing fixture.id in mock response
+    result = aggregator.fetch_team_stats(1, fetch_xg=False)
 
     # Should succeed and return computed metrics (not raw response)
     assert "form_string" in result
