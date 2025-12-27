@@ -17,7 +17,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
-COPY worldcup2026.db ./worldcup2026.db
 
 # Create cache directory for API-Football responses
 RUN mkdir -p cache
