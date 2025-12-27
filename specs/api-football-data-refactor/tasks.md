@@ -20,6 +20,7 @@
 
 ### T002: Delete broken Norway integration test
 **File**: `backend/test_norway_integration.py`
+**Status**: ✅ Complete
 **Description**: Delete test file with broken `DBManager` import.
 - Remove entire file (references deprecated module)
 - Alternative: If test logic is valuable, rewrite without DBManager dependency
