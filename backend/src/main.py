@@ -30,7 +30,7 @@ from src.exceptions import (
     GeminiFailureError,
 )
 from src.fifa_engine import FifaEngine
-from src.fifa_ranking_scraper import FIFARankingScraper
+from src.fifa_ranking_scraper import FIFARankingScraper  # type: ignore[import-not-found]
 from src.firestore_publisher import FirestorePublisher
 
 # Configure logging
@@ -108,12 +108,14 @@ def health_check() -> Dict[str, Any]:
 
     try:
         # Check Firestore connection (now our primary database)
+        teams_count = 0
         try:
             fs_manager = FirestoreManager()
             teams = fs_manager.get_all_teams()
-            firestore_status = "ok" if len(teams) > 0 else "error"
+            teams_count = len(teams)
+            firestore_status = "ok" if teams_count > 0 else "error"
             logger.info(
-                f"Firestore check: {firestore_status} ({len(teams)} teams loaded)"
+                f"Firestore check: {firestore_status} ({teams_count} teams loaded)"
             )
         except Exception as e:
             firestore_status = "error"
@@ -130,7 +132,7 @@ def health_check() -> Dict[str, Any]:
         return {
             "status": status,
             "firestore": firestore_status,
-            "teams_count": len(teams) if firestore_status == "ok" else 0,
+            "teams_count": teams_count,
             "cache_size": cache_size,
             "timestamp": datetime.utcnow().isoformat(),
         }
@@ -557,7 +559,7 @@ def update_predictions() -> Dict[str, Any]:
                     # Cache MISS - fetch from API-Football
                     firestore_cache_misses += 1
 
-                    if has_api_football_id:
+                    if has_api_football_id and team.api_football_id is not None:
                         # Fetch real data from API-Football (with xG enabled)
                         stats = aggregator.fetch_team_stats(
                             team.api_football_id, fetch_xg=True
@@ -703,19 +705,20 @@ def update_predictions() -> Dict[str, Any]:
                 if not should_regenerate:
                     # Use cached prediction
                     cached_prediction = fs_manager.get_match_prediction(match.id)
-                    predictions_cached += 1
+                    if cached_prediction is not None:
+                        predictions_cached += 1
 
-                    # Add to predictions list
-                    predictions.append(
-                        {
-                            "match_id": match.id,
-                            "match_number": match.match_number,
-                            "has_real_data": home_stats.get("has_real_data", False)
-                            and away_stats.get("has_real_data", False),
-                            **cached_prediction,
-                        }
-                    )
-                    continue
+                        # Add to predictions list
+                        predictions.append(
+                            {
+                                "match_id": match.id,
+                                "match_number": match.match_number,
+                                "has_real_data": home_stats.get("has_real_data", False)
+                                and away_stats.get("has_real_data", False),
+                                **cached_prediction,
+                            }
+                        )
+                        continue
 
                 # Need to regenerate prediction
                 predictions_regenerated += 1
@@ -802,12 +805,22 @@ def update_predictions() -> Dict[str, Any]:
         # Step 4: Fetch existing tournament data from Firestore and update with predictions
         try:
             publisher = FirestorePublisher()
+            if publisher.db is None:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Firestore client not initialized",
+                )
             # Get existing snapshot
             doc_ref = publisher.db.collection("predictions").document("latest")
             doc_snap = doc_ref.get()
 
-            if doc_snap.exists:
-                snapshot = doc_snap.to_dict()
+            if doc_snap.exists:  # type: ignore[union-attr]
+                snapshot = doc_snap.to_dict()  # type: ignore[union-attr]
+                if snapshot is None:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Tournament snapshot exists but is empty. Run /api/update-tournament first.",
+                    )
                 # Add predictions to existing snapshot
                 snapshot["predictions"] = predictions
                 snapshot["ai_summary"] = (
@@ -1121,16 +1134,26 @@ async def sync_match_flags():
 
         # Get existing snapshot from Firestore
         publisher = FirestorePublisher()
+        if publisher.db is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Firestore client not initialized",
+            )
         doc_ref = publisher.db.collection("predictions").document("latest")
         doc_snap = doc_ref.get()
 
-        if not doc_snap.exists:
+        if not doc_snap.exists:  # type: ignore[union-attr]
             raise HTTPException(
                 status_code=404,
                 detail="No predictions found. Run /api/update-predictions first.",
             )
 
-        snapshot = doc_snap.to_dict()
+        snapshot = doc_snap.to_dict()  # type: ignore[union-attr]
+        if snapshot is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Snapshot is empty",
+            )
         predictions = snapshot.get("predictions", [])
 
         if not predictions:

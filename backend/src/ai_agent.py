@@ -14,12 +14,13 @@ import time
 from typing import Dict, Any, Optional
 
 try:
-    from google import genai
-    from google.genai import types
+    from google import genai  # type: ignore[import-untyped]
+    from google.genai import types  # type: ignore[import-untyped]
 
     GENAI_VERSION = "new"
 except ImportError:
-    import google.generativeai as genai
+    import google.generativeai as genai  # type: ignore[import-not-found,import-untyped,no-redef]
+    types = None  # type: ignore[assignment]
 
     GENAI_VERSION = "legacy"
 
@@ -51,8 +52,8 @@ class AIAgent:
             self.model_name = "gemini-2.5-flash"
         else:
             # Legacy google.generativeai SDK
-            genai.configure(api_key=config.GEMINI_API_KEY or "test-key")
-            self.model = genai.GenerativeModel(
+            genai.configure(api_key=config.GEMINI_API_KEY or "test-key")  # type: ignore[attr-defined]
+            self.model = genai.GenerativeModel(  # type: ignore[attr-defined]
                 "gemini-1.5-pro",
                 generation_config={
                     "response_mime_type": "application/json",
@@ -255,10 +256,10 @@ Gi spådommen som JSON med nøyaktig dette skjemaet:
                 response = self.client.models.generate_content(
                     model=self.model_name,
                     contents=prompt,
-                    config=types.GenerateContentConfig(
+                    config=types.GenerateContentConfig(  # type: ignore[union-attr]
                         response_mime_type="application/json",
                         temperature=0.7,
-                        automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(  # type: ignore[union-attr]
                             disable=True  # Disable AFC - we don't use function calling
                         ),
                     ),

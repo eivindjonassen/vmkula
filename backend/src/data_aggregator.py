@@ -16,7 +16,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 import requests
 
@@ -199,44 +199,44 @@ class DataAggregator:
             confidence=confidence,
         )
 
-    def get_cached_stats(self, team_id: int) -> Optional[Dict[str, Any]]:
+    def get_cached_stats(self, cache_key: Union[int, str]) -> Optional[Any]:
         """
-        Load team stats from local cache if fresh (< 24 hours).
+        Load stats from local cache if fresh (< 24 hours).
 
-        Cache file naming: cache/team_stats_{team_id}_{YYYY-MM-DD}.json
+        Cache file naming: cache/team_stats_{cache_key}_{YYYY-MM-DD}.json
         Using date in filename naturally expires cache when day changes.
 
         Args:
-            team_id: Team ID to load
+            cache_key: Team ID (int) or cache key string to load
 
         Returns:
-            Cached stats dict or None if cache miss/expired
+            Cached data (dict or list) or None if cache miss/expired
         """
         today = datetime.now().strftime("%Y-%m-%d")
-        cache_file = Path(self.cache_dir) / f"team_stats_{team_id}_{today}.json"
+        cache_file = Path(self.cache_dir) / f"team_stats_{cache_key}_{today}.json"
 
         if cache_file.exists():
             try:
                 with open(cache_file, "r") as f:
                     stats = json.load(f)
-                    logger.info(f"Cache HIT for team {team_id}")
+                    logger.info(f"Cache HIT for {cache_key}")
                     return stats
             except (json.JSONDecodeError, IOError) as e:
                 # Corrupted cache file - treat as miss
-                logger.warning(f"Cache file corrupted for team {team_id}: {e}")
+                logger.warning(f"Cache file corrupted for {cache_key}: {e}")
                 return None
 
-        logger.info(f"Cache MISS for team {team_id}")
+        logger.info(f"Cache MISS for {cache_key}")
         return None
 
-    def save_to_cache(self, team_id: int, stats: Dict[str, Any]) -> None:
+    def save_to_cache(self, cache_key: Union[int, str], stats: Any) -> None:
         """
-        Save team stats to local cache.
+        Save stats to local cache.
 
         Creates cache directory if missing.
 
         Args:
-            team_id: Team ID
+            cache_key: Team ID (int) or cache key string
             stats: Statistics dictionary to cache
         """
         try:
@@ -245,14 +245,14 @@ class DataAggregator:
             cache_path.mkdir(parents=True, exist_ok=True)
 
             today = datetime.now().strftime("%Y-%m-%d")
-            cache_file = cache_path / f"team_stats_{team_id}_{today}.json"
+            cache_file = cache_path / f"team_stats_{cache_key}_{today}.json"
 
             with open(cache_file, "w") as f:
                 json.dump(stats, f, indent=2)
 
-            logger.info(f"Saved cache for team {team_id}")
+            logger.info(f"Saved cache for {cache_key}")
         except (IOError, OSError) as e:
-            logger.error(f"Failed to save cache for team {team_id}: {e}")
+            logger.error(f"Failed to save cache for {cache_key}: {e}")
 
     def fetch_from_api(
         self, team_id: int, last: int = 5, next: int = 0
@@ -621,7 +621,7 @@ class DataAggregator:
             prediction_data = data["response"][0]
 
             # Cache the result
-            self.save_cached_stats(cache_key, prediction_data)
+            self.save_to_cache(cache_key, prediction_data)
 
             logger.info(f"✅ Prediction fetched for fixture {fixture_id}")
             return prediction_data
@@ -630,7 +630,7 @@ class DataAggregator:
             logger.error(f"Failed to fetch prediction for fixture {fixture_id}: {e}")
             return None
 
-    def fetch_fixture_statistics(self, fixture_id: int) -> Optional[Dict[str, Any]]:
+    def fetch_fixture_statistics(self, fixture_id: int) -> Optional[List[Dict[str, Any]]]:
         """
         Fetch detailed match statistics including xG.
 
@@ -638,7 +638,7 @@ class DataAggregator:
             fixture_id: API-Football fixture ID
 
         Returns:
-            Dict with statistics for both teams including:
+            List of dicts with statistics for both teams including:
             - Expected Goals (xG)
             - Shots on target
             - Possession
@@ -677,7 +677,7 @@ class DataAggregator:
             stats_data = data["response"]
 
             # Cache the result
-            self.save_cached_stats(cache_key, stats_data)
+            self.save_to_cache(cache_key, stats_data)
 
             logger.info(f"✅ Statistics fetched for fixture {fixture_id}")
             return stats_data

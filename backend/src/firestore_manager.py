@@ -84,8 +84,8 @@ class FirestoreManager:
         """
         doc = self.teams_collection.document(str(team_id)).get()
 
-        if doc.exists:
-            return doc.to_dict()
+        if doc.exists:  # type: ignore[union-attr]
+            return doc.to_dict()  # type: ignore[union-attr]
 
         return None
 
@@ -238,8 +238,8 @@ class FirestoreManager:
         """
         doc = self.matches_collection.document(str(match_id)).get()
 
-        if doc.exists:
-            return doc.to_dict()
+        if doc.exists:  # type: ignore[union-attr]
+            return doc.to_dict()  # type: ignore[union-attr]
 
         return None
 
@@ -412,8 +412,8 @@ class FirestoreManager:
         """Get city by ID."""
         doc = self.cities_collection.document(str(city_id)).get()
 
-        if doc.exists:
-            return doc.to_dict()
+        if doc.exists:  # type: ignore[union-attr]
+            return doc.to_dict()  # type: ignore[union-attr]
 
         return None
 
@@ -509,9 +509,9 @@ class FirestoreManager:
         # Fetch from Firestore
         doc = self.raw_api_responses_collection.document(document_id).get()
 
-        if doc.exists:
+        if doc.exists:  # type: ignore[union-attr]
             logger.info(f"Retrieved raw API response: {document_id}")
-            return doc.to_dict()
+            return doc.to_dict()  # type: ignore[union-attr]
 
         logger.info(f"Raw API response not found: {document_id}")
         return None
@@ -595,8 +595,8 @@ class FirestoreManager:
         """
         doc = self.db.collection("fifa_rankings").document("latest").get()
         
-        if doc.exists:
-            return doc.to_dict()
+        if doc.exists:  # type: ignore[union-attr]
+            return doc.to_dict()  # type: ignore[union-attr]
         
         return None
     
