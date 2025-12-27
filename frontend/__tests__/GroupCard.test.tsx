@@ -64,10 +64,10 @@ describe("GroupCard", () => {
 	it("renders group letter and team names", () => {
 		const { container } = render(<GroupCard group={mockGroup} />);
 
-		// Norwegian translation: "Gruppe A"
+		// Norwegian translation: "Gruppe A" and team names are translated
 		expect(container.textContent).toContain("Gruppe");
-		expect(container.textContent).toContain("Germany");
-		expect(container.textContent).toContain("Scotland");
+		expect(container.textContent).toContain("Tyskland"); // Germany in Norwegian
+		expect(container.textContent).toContain("Skottland"); // Scotland in Norwegian
 	});
 
 	it("displays team flag emojis", () => {
