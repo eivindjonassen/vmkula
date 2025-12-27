@@ -416,11 +416,9 @@ describe("Frontend Integration: Predictions Flow", () => {
 				updatedAt: "invalid-date",
 				groups: null,
 				bracket: undefined,
-			};
+			} as unknown as TournamentSnapshot;
 
-			vi.mocked(fetchLatestPredictions).mockResolvedValueOnce(
-				invalidSnapshot as any,
-			);
+			vi.mocked(fetchLatestPredictions).mockResolvedValueOnce(invalidSnapshot);
 
 			const data = await fetchLatestPredictions();
 

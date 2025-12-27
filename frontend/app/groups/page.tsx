@@ -12,10 +12,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import GroupCard from "../../components/GroupCard";
 import { fetchLatestPredictions } from "../../lib/firestore";
-import type { Group, TournamentSnapshot } from "../../lib/types";
+import type { Team, TournamentSnapshot } from "../../lib/types";
+
+interface ThirdPlaceTeam {
+	group: string;
+	team: Team;
+	points: number;
+	gd: number;
+}
 
 export default function GroupsPage() {
 	const [snapshot, setSnapshot] = useState<TournamentSnapshot | null>(null);
@@ -23,11 +30,7 @@ export default function GroupsPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
-	useEffect(() => {
-		loadPredictions();
-	}, []);
-
-	const loadPredictions = async () => {
+	const loadPredictions = useCallback(async () => {
 		setLoading(true);
 		setError(null);
 		try {
@@ -40,15 +43,14 @@ export default function GroupsPage() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
+
+	useEffect(() => {
+		loadPredictions();
+	}, [loadPredictions]);
 
 	// Get third-place teams sorted by qualification criteria
-	const getThirdPlaceQualifiers = (): Array<{
-		group: string;
-		team: any;
-		points: number;
-		gd: number;
-	}> => {
+	const getThirdPlaceQualifiers = (): ThirdPlaceTeam[] => {
 		if (!snapshot) return [];
 
 		const thirdPlaceTeams = Object.entries(snapshot.groups)
@@ -62,12 +64,7 @@ export default function GroupsPage() {
 					gd: thirdTeam.goalsFor - thirdTeam.goalsAgainst,
 				};
 			})
-			.filter(Boolean) as Array<{
-			group: string;
-			team: any;
-			points: number;
-			gd: number;
-		}>;
+			.filter(Boolean) as ThirdPlaceTeam[];
 
 		// Sort by points, then GD, then goals scored
 		return thirdPlaceTeams

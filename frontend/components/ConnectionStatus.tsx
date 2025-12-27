@@ -42,7 +42,7 @@ export default function ConnectionStatus() {
 			window.removeEventListener("online", handleOnline);
 			window.removeEventListener("offline", handleOffline);
 		};
-	}, []);
+	}, [isOnline]);
 
 	// Only show indicator when offline or briefly when coming back online
 	if (!showOffline && isOnline) {

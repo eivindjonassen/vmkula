@@ -14,12 +14,13 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import BracketView from "../components/BracketView";
 import ConnectionStatus from "../components/ConnectionStatus";
 import GroupCard from "../components/GroupCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import MatchCard from "../components/MatchCard";
+import { getCountryFlag } from "../lib/countryFlags";
 import { getFavoriteTeams } from "../lib/favorites";
 import { fetchLatestPredictions } from "../lib/firestore";
 import type { Match, TournamentSnapshot } from "../lib/types";
@@ -39,7 +40,6 @@ function HomeContent() {
 	const [snapshot, setSnapshot] = useState<TournamentSnapshot | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [refreshing, setRefreshing] = useState(false);
 	const [favoriteTeams, setFavoriteTeams] = useState<string[]>([]);
 
 	// Load favorite teams on mount and listen for changes
@@ -77,12 +77,7 @@ function HomeContent() {
 		}
 	}, [searchParams]);
 
-	// Fetch predictions on mount
-	useEffect(() => {
-		loadPredictions();
-	}, []);
-
-	const loadPredictions = async () => {
+	const loadPredictions = useCallback(async () => {
 		setLoading(true);
 		setError(null);
 		try {
@@ -95,27 +90,12 @@ function HomeContent() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
 
-	const handleRefresh = async () => {
-		setRefreshing(true);
-		try {
-			// Trigger backend tournament update (fast - no AI predictions)
-			const backendUrl =
-				process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-			await fetch(`${backendUrl}/api/update-tournament`, { method: "POST" });
-
-			// Wait 1 second for backend to complete
-			await new Promise((resolve) => setTimeout(resolve, 1000));
-
-			// Reload tournament data
-			await loadPredictions();
-		} catch (err) {
-			setError("Failed to refresh tournament data");
-		} finally {
-			setRefreshing(false);
-		}
-	};
+	// Fetch predictions on mount
+	useEffect(() => {
+		loadPredictions();
+	}, [loadPredictions]);
 
 	// Handle tab change - update URL and state
 	const handleTabChange = (tab: Tab) => {
@@ -260,29 +240,15 @@ function HomeContent() {
 						</nav>
 					</div>
 
-					{/* Last Updated & Refresh - Mobile Optimized */}
+					{/* Last Updated */}
 					{snapshot && (
-						<div className="flex flex-col sm:flex-row justify-between items-center pb-3 sm:pb-4 gap-3 text-xs sm:text-sm">
+						<div className="flex justify-center sm:justify-start pb-3 sm:pb-4 text-xs sm:text-sm">
 							<div className="text-slate-700 text-center sm:text-left">
 								⏱️ {tCommon("lastUpdated")}:{" "}
 								<span className="font-bold text-emerald-700">
 									{formatTimestamp(snapshot.updatedAt)}
 								</span>
 							</div>
-							<button
-								onClick={handleRefresh}
-								disabled={refreshing}
-								className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-emerald-500/30 hover:scale-105 transform min-h-[44px] sm:min-h-0 focus:ring-4 focus:ring-emerald-300 focus:outline-none"
-								aria-label={
-									refreshing
-										? "Oppdaterer turneringsdata"
-										: "Oppdater turneringsdata"
-								}
-							>
-								{refreshing
-									? `🔄 ${tCommon("refreshing")}...`
-									: `🔄 ${t("refreshTournament")}`}
-							</button>
 						</div>
 					)}
 				</div>
@@ -377,9 +343,7 @@ function HomeContent() {
 														>
 															<div className="flex items-center gap-2 mb-1">
 																<span className="text-2xl" aria-hidden="true">
-																	{require("../lib/countryFlags").getCountryFlag(
-																		team,
-																	)}
+																	{getCountryFlag(team)}
 																</span>
 																<span className="text-amber-900 font-bold">
 																	{team}

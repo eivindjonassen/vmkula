@@ -13,7 +13,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import BracketView from "../../components/BracketView";
 import { fetchLatestPredictions } from "../../lib/firestore";
 import type { TournamentSnapshot } from "../../lib/types";
@@ -24,9 +24,36 @@ export default function BracketPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [zoomLevel, setZoomLevel] = useState(100);
 
+	const loadPredictions = useCallback(async () => {
+		setLoading(true);
+		setError(null);
+		try {
+			const data = await fetchLatestPredictions();
+			setSnapshot(data);
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Failed to fetch predictions",
+			);
+		} finally {
+			setLoading(false);
+		}
+	}, []);
+
+	const handleZoomIn = useCallback(() => {
+		setZoomLevel((prev) => Math.min(prev + 10, 150));
+	}, []);
+
+	const handleZoomOut = useCallback(() => {
+		setZoomLevel((prev) => Math.max(prev - 10, 50));
+	}, []);
+
+	const handleResetZoom = useCallback(() => {
+		setZoomLevel(100);
+	}, []);
+
 	useEffect(() => {
 		loadPredictions();
-	}, []);
+	}, [loadPredictions]);
 
 	// Keyboard shortcuts for zoom controls
 	useEffect(() => {
@@ -46,34 +73,7 @@ export default function BracketPage() {
 		};
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [zoomLevel]);
-
-	const loadPredictions = async () => {
-		setLoading(true);
-		setError(null);
-		try {
-			const data = await fetchLatestPredictions();
-			setSnapshot(data);
-		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Failed to fetch predictions",
-			);
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	const handleZoomIn = () => {
-		setZoomLevel((prev) => Math.min(prev + 10, 150));
-	};
-
-	const handleZoomOut = () => {
-		setZoomLevel((prev) => Math.max(prev - 10, 50));
-	};
-
-	const handleResetZoom = () => {
-		setZoomLevel(100);
-	};
+	}, [handleZoomIn, handleZoomOut, handleResetZoom]);
 
 	// Find predicted winner (Final match winner)
 	const getPredictedWinner = () => {

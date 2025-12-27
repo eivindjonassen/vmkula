@@ -13,7 +13,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import MatchCard from "../../components/MatchCard";
 import { fetchLatestPredictions } from "../../lib/firestore";
 import type { Match, TournamentSnapshot } from "../../lib/types";
@@ -35,11 +35,7 @@ export default function MatchesPage() {
 	const [selectedStage, setSelectedStage] = useState<number | "all">("all");
 	const [searchQuery, setSearchQuery] = useState("");
 
-	useEffect(() => {
-		loadPredictions();
-	}, []);
-
-	const loadPredictions = async () => {
+	const loadPredictions = useCallback(async () => {
 		setLoading(true);
 		setError(null);
 		try {
@@ -52,7 +48,11 @@ export default function MatchesPage() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
+
+	useEffect(() => {
+		loadPredictions();
+	}, [loadPredictions]);
 
 	// Filter and sort matches
 	const filteredMatches = useMemo(() => {

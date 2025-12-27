@@ -25,6 +25,11 @@ export interface TeamStats {
 }
 
 /**
+ * Alias for TeamStats used in group standings.
+ */
+export type Team = TeamStats;
+
+/**
  * Group data with team standings.
  */
 export interface Group {

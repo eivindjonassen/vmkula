@@ -128,7 +128,7 @@ export default function MatchCard({ match, prediction }: MatchCardProps) {
 					text: shareText,
 					url: window.location.href,
 				});
-			} catch (err) {
+			} catch {
 				// User cancelled or error occurred
 				console.log("Share cancelled or failed");
 			}

@@ -1,3 +1,4 @@
+import type { DocumentSnapshot } from "firebase/firestore";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchLatestPredictions } from "../../lib/firestore";
 
@@ -7,6 +8,17 @@ vi.mock("firebase/firestore", () => ({
 	doc: vi.fn(),
 	getDoc: vi.fn(),
 }));
+
+// Helper to create mock document snapshots
+function createMockDocSnapshot(
+	exists: boolean,
+	data?: Record<string, unknown>,
+): Partial<DocumentSnapshot> {
+	return {
+		exists: () => exists,
+		data: () => data,
+	};
+}
 
 describe("firestore lib", () => {
 	beforeEach(() => {
@@ -21,10 +33,9 @@ describe("firestore lib", () => {
 			groups: {},
 			bracket: [],
 		};
-		vi.mocked(getDoc).mockResolvedValueOnce({
-			exists: () => true,
-			data: () => mockData,
-		} as any);
+		vi.mocked(getDoc).mockResolvedValueOnce(
+			createMockDocSnapshot(true, mockData) as DocumentSnapshot,
+		);
 
 		const result = await fetchLatestPredictions();
 		expect(result).toEqual(mockData);
@@ -32,9 +43,9 @@ describe("firestore lib", () => {
 
 	it("returns null when document doesn't exist", async () => {
 		const { getDoc } = await import("firebase/firestore");
-		vi.mocked(getDoc).mockResolvedValueOnce({
-			exists: () => false,
-		} as any);
+		vi.mocked(getDoc).mockResolvedValueOnce(
+			createMockDocSnapshot(false) as DocumentSnapshot,
+		);
 
 		const result = await fetchLatestPredictions();
 		expect(result).toBeNull();
@@ -54,10 +65,9 @@ describe("firestore lib", () => {
 			groups: {},
 		};
 
-		vi.mocked(getDoc).mockResolvedValueOnce({
-			exists: () => true,
-			data: () => mockData,
-		} as any);
+		vi.mocked(getDoc).mockResolvedValueOnce(
+			createMockDocSnapshot(true, mockData) as DocumentSnapshot,
+		);
 
 		// Mock global fetch for backend refresh
 		global.fetch = vi.fn().mockResolvedValueOnce({ ok: true });
@@ -83,10 +93,9 @@ describe("firestore lib", () => {
 			updatedAt: freshTime,
 		};
 
-		vi.mocked(getDoc).mockResolvedValueOnce({
-			exists: () => true,
-			data: () => mockData,
-		} as any);
+		vi.mocked(getDoc).mockResolvedValueOnce(
+			createMockDocSnapshot(true, mockData) as DocumentSnapshot,
+		);
 
 		global.fetch = vi.fn();
 

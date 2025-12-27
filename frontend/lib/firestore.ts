@@ -21,7 +21,58 @@ import {
 	Unsubscribe,
 } from "firebase/firestore";
 import { getCountryFlag } from "./countryFlags";
-import type { TournamentSnapshot } from "./types";
+import type {
+	Group,
+	Match,
+	MatchPrediction,
+	TournamentSnapshot,
+} from "./types";
+
+// Types for raw Firestore data (snake_case from backend)
+interface FirestorePrediction {
+	match_id: number;
+	winner: string;
+	win_probability: number;
+	predicted_home_score: number;
+	predicted_away_score: number;
+	reasoning: string;
+	confidence?: string;
+}
+
+interface FirestoreMatch {
+	id: number;
+	match_number: number;
+	home_team_id: number | null;
+	away_team_id: number | null;
+	home_team_name?: string;
+	away_team_name?: string;
+	venue: string;
+	stage_id: number;
+	kickoff: string;
+	label: string;
+	home_score?: number;
+	away_score?: number;
+	prediction?: MatchPrediction;
+	has_real_data?: boolean;
+}
+
+interface FirestoreTeam {
+	team_id?: number;
+	team_name?: string;
+	name?: string;
+	flag?: string;
+	played?: number;
+	won?: number;
+	draw?: number;
+	lost?: number;
+	goals_for?: number;
+	goals_against?: number;
+	points?: number;
+	rank?: number;
+	predicted_placement?: string;
+	predicted_rank?: number;
+	has_real_data?: boolean;
+}
 
 // Firebase configuration
 const firebaseConfig = {
@@ -138,9 +189,9 @@ async function fetchFromFirestore(): Promise<TournamentSnapshot | null> {
 		);
 
 		// Create a map of predictions by match_id for easy lookup
-		const predictionsMap = new Map();
+		const predictionsMap = new Map<number, MatchPrediction>();
 		if (rawData.predictions) {
-			rawData.predictions.forEach((pred: any) => {
+			rawData.predictions.forEach((pred: FirestorePrediction) => {
 				predictionsMap.set(pred.match_id, {
 					winner: pred.winner,
 					winProbability: pred.win_probability,
@@ -220,9 +271,9 @@ function revalidateCache(): void {
  * Merges predictions from predictions map.
  */
 function transformMatches(
-	firestoreMatches: any[],
-	predictionsMap?: Map<number, any>,
-): any[] {
+	firestoreMatches: FirestoreMatch[],
+	predictionsMap?: Map<number, MatchPrediction>,
+): Match[] {
 	return firestoreMatches.map((match) => {
 		const prediction = predictionsMap?.get(match.id);
 
@@ -255,9 +306,9 @@ function transformMatches(
  * Adds country flags based on team names.
  */
 function transformGroups(
-	firestoreGroups: Record<string, any[]>,
-): Record<string, any> {
-	const transformed: Record<string, any> = {};
+	firestoreGroups: Record<string, FirestoreTeam[]>,
+): Record<string, Group> {
+	const transformed: Record<string, Group> = {};
 
 	for (const [letter, teams] of Object.entries(firestoreGroups)) {
 		transformed[letter] = {
@@ -315,9 +366,9 @@ export function subscribeToLatestPredictions(
 			console.log("🔔 Real-time update received");
 
 			// Create predictions map
-			const predictionsMap = new Map();
+			const predictionsMap = new Map<number, MatchPrediction>();
 			if (rawData.predictions) {
-				rawData.predictions.forEach((pred: any) => {
+				rawData.predictions.forEach((pred: FirestorePrediction) => {
 					predictionsMap.set(pred.match_id, {
 						winner: pred.winner,
 						winProbability: pred.win_probability,
