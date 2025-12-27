@@ -59,6 +59,7 @@ class TestAPIFootballSync:
 
         mock_data_aggregator.fetch_teams.return_value = mock_api_response
         mock_firestore.store_raw_api_response.return_value = "teams_1_2026"
+        mock_firestore.get_all_teams.return_value = []  # No existing teams
 
         # Import will fail - APIFootballSync doesn't exist yet
         from src.api_football_sync import APIFootballSync

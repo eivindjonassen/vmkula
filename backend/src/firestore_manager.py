@@ -66,6 +66,7 @@ class FirestoreManager:
         self.teams_collection = self.db.collection("teams")
         self.matches_collection = self.db.collection("matches")
         self.cities_collection = self.db.collection("host_cities")
+        self.raw_api_responses_collection = self.db.collection("raw_api_responses")
 
     # ============================================================
     # TEAMS
@@ -402,6 +403,82 @@ class FirestoreManager:
         )
 
         logger.info(f"Created city: {city_name} ({venue_name})")
+
+    # ============================================================
+    # RAW API RESPONSES (for API-Football sync)
+    # ============================================================
+
+    @property
+    def api_football_raw_collection(self):
+        """
+        Get reference to raw API responses collection.
+
+        Returns:
+            Collection reference
+        """
+        return self.raw_api_responses_collection
+
+    def store_raw_api_response(
+        self,
+        entity_type: str,
+        league_id: int,
+        season: int,
+        raw_response: Dict[str, Any],
+    ) -> str:
+        """
+        Store raw API-Football response in Firestore.
+
+        Args:
+            entity_type: Type of entity (teams, fixtures, etc.)
+            league_id: League ID
+            season: Season year
+            raw_response: Raw API response dictionary
+
+        Returns:
+            Document ID of stored response
+        """
+        # Create document ID: "{entity_type}_{league_id}_{season}"
+        document_id = f"{entity_type}_{league_id}_{season}"
+
+        # Build document data
+        document_data = {
+            "entity_type": entity_type,
+            "league_id": league_id,
+            "season": season,
+            "raw_response": raw_response,
+            "fetched_at": datetime.utcnow(),
+            "api_version": "v3",
+            "endpoint": f"/teams" if entity_type == "teams" else f"/fixtures",
+        }
+
+        # Store in Firestore
+        self.raw_api_responses_collection.document(document_id).set(document_data)
+
+        logger.info(
+            f"Stored raw API response: {document_id} (entity_type={entity_type}, league_id={league_id}, season={season})"
+        )
+
+        return document_id
+
+    def get_raw_api_response(self, document_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve raw API-Football response from Firestore by document ID.
+
+        Args:
+            document_id: Document ID (format: "{entity_type}_{league_id}_{season}")
+
+        Returns:
+            Raw API response document or None if not found
+        """
+        # Fetch from Firestore
+        doc = self.raw_api_responses_collection.document(document_id).get()
+
+        if doc.exists:
+            logger.info(f"Retrieved raw API response: {document_id}")
+            return doc.to_dict()
+
+        logger.info(f"Raw API response not found: {document_id}")
+        return None
 
     # ============================================================
     # CACHE HELPERS

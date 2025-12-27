@@ -9,14 +9,17 @@ Implements:
 
 import logging
 import uuid
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from src.ai_agent import AIAgent
+from src.api_football_sync import APIFootballSync
 from src.config import config
 from src.data_aggregator import DataAggregator
 from src.firestore_manager import FirestoreManager
@@ -35,6 +38,17 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] - %(message)s",
 )
+
+
+# Pydantic models for request validation
+class SyncRequest(BaseModel):
+    """Request model for API-Football sync endpoint."""
+
+    entity_type: str
+    league_id: int
+    season: int
+    force_update: bool = False
+
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -952,6 +966,88 @@ def update_predictions() -> Dict[str, Any]:
         )
         raise HTTPException(
             status_code=500, detail=f"Prediction pipeline failed: {str(e)}"
+        )
+
+
+@app.post("/api/sync-api-football")
+def sync_api_football(request: SyncRequest) -> Dict[str, Any]:
+    """
+    Sync teams or fixtures from API-Football to Firestore.
+
+    This endpoint handles synchronization of API-Football data including:
+    - Storing raw API responses
+    - Detecting changes between API and Firestore data
+    - Resolving conflicts with manual overrides
+    - Updating Firestore collections
+
+    Args:
+        request: SyncRequest with entity_type, league_id, season, and force_update
+
+    Returns:
+        SyncResult dictionary with sync statistics
+
+    Raises:
+        HTTPException: 400 for invalid entity_type, 500 for sync failures
+    """
+    logger.info(
+        f"API-Football sync requested: entity_type={request.entity_type}, "
+        f"league_id={request.league_id}, season={request.season}, "
+        f"force_update={request.force_update}"
+    )
+
+    try:
+        # Initialize dependencies
+        firestore_manager = FirestoreManager()
+        data_aggregator = DataAggregator()
+        sync = APIFootballSync(firestore_manager, data_aggregator)
+
+        # Route based on entity_type
+        if request.entity_type == "teams":
+            result = sync.sync_teams(
+                league_id=request.league_id,
+                season=request.season,
+                force_update=request.force_update,
+            )
+        elif request.entity_type == "fixtures":
+            result = sync.sync_fixtures(
+                league_id=request.league_id,
+                season=request.season,
+                force_update=request.force_update,
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid entity_type: {request.entity_type}. Must be 'teams' or 'fixtures'.",
+            )
+
+        # Convert SyncResult dataclass to dict for JSON response
+        # Handle both dataclass and dict (for testing with mocks)
+        if isinstance(result, dict):
+            response_data = result
+        else:
+            response_data = asdict(result)
+            # Remove empty errors list
+            if response_data.get("errors") == []:
+                response_data["errors"] = None
+
+        # Log completion (handle both dict and dataclass)
+        status = result.get("status") if isinstance(result, dict) else result.status
+        changes = (
+            result.get("changes_detected")
+            if isinstance(result, dict)
+            else result.changes_detected
+        )
+        logger.info(f"API-Football sync completed: {status}, {changes} changes")
+
+        return response_data
+
+    except HTTPException:
+        # Re-raise HTTPException as-is
+        raise
+    except Exception as e:
+        logger.error(f"API-Football sync failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"API-Football sync failed: {str(e)}"
         )
 
 

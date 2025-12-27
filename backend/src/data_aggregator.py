@@ -729,3 +729,119 @@ class DataAggregator:
         if elapsed < 0.5:
             time.sleep(0.5 - elapsed)
         self.last_request_time = time.time()
+
+    def fetch_teams(self, league_id: int, season: int) -> Dict[str, Any]:
+        """
+        Fetch teams for a specific league and season from API-Football.
+
+        Args:
+            league_id: API-Football league ID
+            season: Season year (e.g., 2026)
+
+        Returns:
+            API-Football response dictionary with teams data
+
+        Raises:
+            requests.HTTPError: On HTTP errors
+            requests.RequestException: On network/connection errors
+        """
+        # API-Football v3 endpoint
+        url = "https://v3.football.api-sports.io/teams"
+
+        # Request headers with API key
+        headers = {
+            "x-rapidapi-key": config.API_FOOTBALL_KEY,
+            "x-rapidapi-host": "v3.football.api-sports.io",
+        }
+
+        # Query parameters
+        params = {"league": league_id, "season": season}
+
+        logger.debug(
+            f"Calling API-Football: GET {url}?league={league_id}&season={season}"
+        )
+
+        # Rate limiting
+        self._enforce_rate_limit()
+
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+            response.raise_for_status()
+
+            data = response.json()
+
+            if "response" not in data:
+                raise ValueError(f"Unexpected API-Football response format: {data}")
+
+            logger.debug(f"API-Football returned {len(data.get('response', []))} teams")
+            return data
+
+        except requests.HTTPError as e:
+            if e.response.status_code == 429:
+                logger.error(f"API-Football rate limit exceeded: {e}")
+                raise APIRateLimitError(f"API-Football rate limit (429): {e}") from e
+            else:
+                logger.error(f"API-Football HTTP error: {e}")
+                raise
+        except requests.RequestException as e:
+            logger.error(f"API-Football request failed: {e}")
+            raise
+
+    def fetch_fixtures(self, league_id: int, season: int) -> Dict[str, Any]:
+        """
+        Fetch fixtures for a specific league and season from API-Football.
+
+        Args:
+            league_id: API-Football league ID
+            season: Season year (e.g., 2026)
+
+        Returns:
+            API-Football response dictionary with fixtures data
+
+        Raises:
+            requests.HTTPError: On HTTP errors
+            requests.RequestException: On network/connection errors
+        """
+        # API-Football v3 endpoint
+        url = "https://v3.football.api-sports.io/fixtures"
+
+        # Request headers with API key
+        headers = {
+            "x-rapidapi-key": config.API_FOOTBALL_KEY,
+            "x-rapidapi-host": "v3.football.api-sports.io",
+        }
+
+        # Query parameters
+        params = {"league": league_id, "season": season}
+
+        logger.debug(
+            f"Calling API-Football: GET {url}?league={league_id}&season={season}"
+        )
+
+        # Rate limiting
+        self._enforce_rate_limit()
+
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+            response.raise_for_status()
+
+            data = response.json()
+
+            if "response" not in data:
+                raise ValueError(f"Unexpected API-Football response format: {data}")
+
+            logger.debug(
+                f"API-Football returned {len(data.get('response', []))} fixtures"
+            )
+            return data
+
+        except requests.HTTPError as e:
+            if e.response.status_code == 429:
+                logger.error(f"API-Football rate limit exceeded: {e}")
+                raise APIRateLimitError(f"API-Football rate limit (429): {e}") from e
+            else:
+                logger.error(f"API-Football HTTP error: {e}")
+                raise
+        except requests.RequestException as e:
+            logger.error(f"API-Football request failed: {e}")
+            raise
