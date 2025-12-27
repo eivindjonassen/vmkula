@@ -2,11 +2,10 @@
 Populate Firestore with data from API-Football.
 
 This script:
-1. Migrates data from SQLite to Firestore (if not already done)
-2. Adds API-Football team ID mappings for all qualified teams
-3. Fetches team statistics from API-Football for all teams with IDs
-4. Maps World Cup 2026 fixtures to API-Football fixture IDs (when available)
-5. Validates all data is correctly populated
+1. Adds API-Football team ID mappings for all qualified teams
+2. Fetches team statistics from API-Football for all teams with IDs
+3. Maps World Cup 2026 fixtures to API-Football fixture IDs (when available)
+4. Validates all data is correctly populated
 
 Usage:
     python populate_from_api_football.py
@@ -14,7 +13,6 @@ Usage:
 Requirements:
     - API-Football API key in .env (API_FOOTBALL_KEY)
     - GOOGLE_APPLICATION_CREDENTIALS set for Firestore access
-    - SQLite database (worldcup2026.db) for initial migration
 """
 
 import logging
@@ -25,7 +23,6 @@ from typing import Dict, List, Optional
 
 from src.config import config
 from src.data_aggregator import DataAggregator
-from src.db_manager import DBManager
 from src.firestore_manager import FirestoreManager
 
 # Configure logging
@@ -101,46 +98,6 @@ API_FOOTBALL_TEAM_IDS = {
     # OFC (Oceania)
     "NZL": 1092,  # New Zealand
 }
-
-
-def migrate_sqlite_to_firestore(
-    sqlite_db: DBManager, firestore_db: FirestoreManager
-) -> bool:
-    """
-    Migrate data from SQLite to Firestore.
-
-    Args:
-        sqlite_db: SQLite database manager
-        firestore_db: Firestore database manager
-
-    Returns:
-        True if migration successful
-    """
-    print("=" * 80)
-    print("STEP 1: MIGRATE SQLITE → FIRESTORE")
-    print("=" * 80)
-    print()
-
-    # Check if already migrated
-    try:
-        existing_teams = firestore_db.get_all_teams()
-        if len(existing_teams) > 0:
-            print(f"⚠️  Firestore already has {len(existing_teams)} teams")
-            print("   Skipping migration (already done)")
-            print()
-            return True
-    except Exception as e:
-        logger.warning(f"Could not check existing data: {e}")
-
-    # Run migration using existing script logic
-    try:
-        from migrate_to_firestore import migrate
-
-        success = migrate()
-        return success
-    except Exception as e:
-        logger.error(f"Migration failed: {e}")
-        return False
 
 
 def add_api_football_team_ids(firestore_db: FirestoreManager) -> Dict[str, int]:
@@ -376,26 +333,20 @@ def main():
 
     # Initialize managers
     try:
-        sqlite_db = DBManager("worldcup2026.db")
         firestore_db = FirestoreManager()
         aggregator = DataAggregator(cache_dir="backend/cache")
     except Exception as e:
         print(f"❌ Failed to initialize managers: {e}")
         return False
 
-    # Step 1: Migrate SQLite to Firestore
-    if not migrate_sqlite_to_firestore(sqlite_db, firestore_db):
-        print("❌ Migration failed - aborting")
-        return False
-
-    # Step 2: Add API-Football team IDs
+    # Step 1: Add API-Football team IDs
     updated_teams = add_api_football_team_ids(firestore_db)
 
     if len(updated_teams) == 0:
         print("⚠️  No teams updated with API-Football IDs")
         print("   Migration may have already been done, or no mappings available")
 
-    # Step 3: Fetch team statistics
+    # Step 2: Fetch team statistics
     print("📊 Fetching statistics for ALL teams with API-Football IDs...")
     print("   This will take approximately 6 minutes with rate limiting")
     print()
@@ -406,7 +357,7 @@ def main():
         limit=None,  # Fetch all teams
     )
 
-    # Step 4: Validate
+    # Step 3: Validate
     if not validate_migration(firestore_db):
         print("❌ Validation failed")
         return False
@@ -420,8 +371,6 @@ def main():
     print("  1. Review the data in Firestore Console")
     print("  2. Run backend tests to verify functionality")
     print("  3. Increase fetch limit to populate all teams")
-    print("  4. Update backend code to use Firestore exclusively")
-    print("  5. Remove SQLite database when confident")
     print()
 
     return True

@@ -40,6 +40,7 @@
 
 ### T004: Remove DBManager import from populate script
 **File**: `backend/populate_from_api_football.py`
+**Status**: ✅ Complete
 **Description**: Remove deprecated `DBManager` import and related code.
 - Remove `from src.db_manager import DBManager` (line 28)
 - Remove any DBManager usage in migration logic (if present)
