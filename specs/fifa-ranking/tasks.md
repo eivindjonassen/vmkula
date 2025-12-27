@@ -193,6 +193,7 @@
 **Parallel**: No
 
 ### T016: Implement Firestore methods in FirestoreManager
+**Status**: ✅ Complete
 **File**: `backend/src/firestore_manager.py`  
 **Description**: Add FIFA rankings methods to existing FirestoreManager class:
 - Implement `get_fifa_rankings()`: Fetch fifa_rankings/latest document, return dict or None if expired/missing
