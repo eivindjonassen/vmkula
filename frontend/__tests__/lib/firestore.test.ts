@@ -38,7 +38,11 @@ describe("firestore lib", () => {
 		);
 
 		const result = await fetchLatestPredictions();
-		expect(result).toEqual(mockData);
+		// The function transforms data, so we check key properties instead
+		expect(result).not.toBeNull();
+		expect(result?.updatedAt).toEqual(mockData.updatedAt);
+		expect(result?.groups).toEqual({});
+		expect(result?.bracket).toEqual([]);
 	});
 
 	it("returns null when document doesn't exist", async () => {
@@ -47,7 +51,8 @@ describe("firestore lib", () => {
 			createMockDocSnapshot(false) as DocumentSnapshot,
 		);
 
-		const result = await fetchLatestPredictions();
+		// Force refresh to skip cache
+		const result = await fetchLatestPredictions({ forceRefresh: true });
 		expect(result).toBeNull();
 	});
 
@@ -72,11 +77,12 @@ describe("firestore lib", () => {
 		// Mock global fetch for backend refresh
 		global.fetch = vi.fn().mockResolvedValueOnce({ ok: true });
 
-		await fetchLatestPredictions();
+		// Force refresh to skip cache and fetch from Firestore
+		await fetchLatestPredictions({ forceRefresh: true });
 
-		// Should have triggered refresh
+		// Should have triggered refresh (uses /api/update-tournament endpoint)
 		expect(global.fetch).toHaveBeenCalledWith(
-			expect.stringContaining("/api/update-predictions"),
+			expect.stringContaining("/api/update-tournament"),
 			expect.objectContaining({ method: "POST" }),
 		);
 	});

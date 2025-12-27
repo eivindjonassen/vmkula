@@ -18,50 +18,16 @@ import type {
 	MatchPrediction,
 	TournamentSnapshot,
 } from "../../lib/types";
+// Import actual messages for more realistic test coverage
+import nbMessages from "../../messages/nb.json";
 
 // Mock Firestore module
 vi.mock("../../lib/firestore", () => ({
 	fetchLatestPredictions: vi.fn(),
 }));
 
-// Mock translations for testing
-const messages = {
-	groupCard: {
-		title: "Group {letter}",
-		rank: "Rank",
-		team: "Team",
-		played: "P",
-		won: "W",
-		draw: "D",
-		lost: "L",
-		goalsFor: "GF",
-		goalsAgainst: "GA",
-		goalDifference: "GD",
-		points: "Pts",
-	},
-	matchCard: {
-		match: "Match",
-		prediction: "Prediction",
-		confidence: "Confidence",
-		readMore: "Read more",
-		showLess: "Show less",
-		vs: "vs",
-		tbdNotice: "Teams to be determined",
-		at: "at",
-	},
-	bracketView: {
-		knockoutStage: "Knockout Stage",
-		roundOf32: "Round of 32",
-		roundOf16: "Round of 16",
-		quarterFinals: "Quarter Finals",
-		semiFinals: "Semi Finals",
-		final: "Final",
-	},
-	common: {
-		vs: "vs",
-		tbd: "TBD",
-	},
-};
+// Use actual Norwegian messages for comprehensive integration testing
+const messages = nbMessages;
 
 // Helper to wrap components with NextIntlClientProvider
 function renderWithIntl(ui: React.ReactElement) {
@@ -278,14 +244,16 @@ describe("Frontend Integration: Predictions Flow", () => {
 				matchNumber: 73,
 				homeTeamId: 1,
 				awayTeamId: 3,
-				cityId: 1,
+				homeTeamName: "USA",
+				awayTeamName: "Canada",
+				venue: "MetLife Stadium",
 				stageId: 2,
 				kickoff: "2026-06-27T20:00:00Z",
-				label: "Round of 32",
+				label: "USA vs Canada",
 			};
 
 			const prediction: MatchPrediction = {
-				predictedWinner: "USA",
+				winner: "USA",
 				winProbability: 0.68,
 				predictedHomeScore: 2,
 				predictedAwayScore: 1,
@@ -340,14 +308,16 @@ describe("Frontend Integration: Predictions Flow", () => {
 				matchNumber: 75,
 				homeTeamId: 0, // TBD
 				awayTeamId: 0, // TBD
-				cityId: 3,
+				homeTeamName: "TBD",
+				awayTeamName: "TBD",
+				venue: "SoFi Stadium",
 				stageId: 2,
 				kickoff: "2026-06-29T20:00:00Z",
 				label: "Winner A vs 3rd Place C/D/E",
 			};
 
 			const prediction: MatchPrediction = {
-				predictedWinner: "Winner A",
+				winner: "Winner A",
 				winProbability: 0.6,
 				predictedHomeScore: 2,
 				predictedAwayScore: 1,
@@ -359,9 +329,10 @@ describe("Frontend Integration: Predictions Flow", () => {
 				<MatchCard match={match} prediction={prediction} />,
 			);
 
-			// Should display the label for TBD matchups
-			expect(container.textContent).toContain("Winner A");
-			expect(container.textContent).toContain("3rd Place");
+			// Should display translated bracket labels (Norwegian)
+			// "Winner A" -> "Vinner A", "3rd Place" -> "3. plass"
+			expect(container.textContent).toContain("Vinner A");
+			expect(container.textContent).toContain("3. plass");
 		});
 	});
 
@@ -391,10 +362,12 @@ describe("Frontend Integration: Predictions Flow", () => {
 
 			renderWithIntl(<BracketView bracket={bracket} />);
 
-			// Check for placeholder labels
-			expect(screen.getByText(/3rd Place C\/D\/E/)).toBeDefined();
-			expect(screen.getByText(/Winner B/)).toBeDefined();
-			expect(screen.getByText(/Winner C/)).toBeDefined();
+			// Check for placeholder labels in Norwegian
+			// "3rd Place C/D/E" -> "3. plass C/D/E"
+			// "Winner B" -> "Vinner B", "Winner C" -> "Vinner C"
+			expect(screen.getByText(/3. plass C\/D\/E/)).toBeDefined();
+			expect(screen.getByText(/Vinner B/)).toBeDefined();
+			expect(screen.getByText(/Vinner C/)).toBeDefined();
 		});
 	});
 
