@@ -45,6 +45,7 @@
 ## Phase 2: Tests First (TDD) (9 tasks)
 
 ### T004: Create test file for FIFA ranking scraper
+**Status**: ✅ Complete
 **File**: `backend/tests/test_fifa_ranking_scraper.py` (new)  
 **Description**: Create empty test file structure for FIFA ranking scraper:
 - Import pytest, unittest.mock (Mock, patch, MagicMock)
