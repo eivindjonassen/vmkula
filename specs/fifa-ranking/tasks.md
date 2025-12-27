@@ -69,6 +69,7 @@
 **Parallel**: Yes [P]
 
 ### T006: Write failing test for HTTP fetching with retry logic
+**Status**: ✅ Complete
 **File**: `backend/tests/test_fifa_ranking_scraper.py`  
 **Description**: Create tests for fetch_rankings_page() method:
 - Test: `test_fetch_rankings_page_success()` - Mock successful HTTP 200 response
@@ -81,6 +82,7 @@
 **Parallel**: Yes [P]
 
 ### T007: Write failing test for HTML parsing
+**Status**: ✅ Complete
 **File**: `backend/tests/test_fifa_ranking_scraper.py`  
 **Description**: Create tests for parse_rankings() method:
 - Test: `test_parse_rankings_table_success()` - Parse mock HTML with 2 teams
@@ -92,6 +94,7 @@
 **Parallel**: Yes [P]
 
 ### T008: Write failing test for rankings validation
+**Status**: ✅ Complete
 **File**: `backend/tests/test_fifa_ranking_scraper.py`  
 **Description**: Create tests for validate_completeness() method:
 - Test: `test_validate_rankings_completeness()` - Verify 211 teams = valid, 200 teams = invalid
@@ -101,6 +104,7 @@
 **Parallel**: Yes [P]
 
 ### T009: Write failing test for rate limiting enforcement
+**Status**: ✅ Complete
 **File**: `backend/tests/test_fifa_ranking_scraper.py`  
 **Description**: Create test for _enforce_rate_limit() method:
 - Test: `test_rate_limiting_enforced()` - Mock time.time() and time.sleep()
@@ -111,6 +115,7 @@
 **Parallel**: Yes [P]
 
 ### T010: Write failing test for Firestore storage integration
+**Status**: ✅ Complete
 **File**: `backend/tests/test_fifa_ranking_scraper.py`  
 **Description**: Create tests for scrape_and_store() full workflow:
 - Test: `test_scrape_and_store_success()` - Mock fetch, parse, Firestore write
@@ -122,6 +127,7 @@
 **Parallel**: Yes [P]
 
 ### T011: Write failing test for team ranking lookup
+**Status**: ✅ Complete
 **File**: `backend/tests/test_fifa_ranking_scraper.py`  
 **Description**: Create tests for get_ranking_for_team() method:
 - Test: `test_get_ranking_for_team_success()` - Mock Firestore doc with rankings, lookup "FRA"
@@ -132,6 +138,7 @@
 **Parallel**: Yes [P]
 
 ### T012: Write failing tests for Firestore manager methods
+**Status**: ✅ Complete
 **File**: `backend/tests/test_firestore_manager.py`  
 **Description**: Add tests to existing Firestore manager test file:
 - Test: `test_get_fifa_rankings_success()` - Mock Firestore doc, verify data returned
