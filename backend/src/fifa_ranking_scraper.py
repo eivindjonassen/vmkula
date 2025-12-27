@@ -378,3 +378,59 @@ class FIFARankingScraper:
                 'duration_seconds': duration,
                 'error_message': error_msg
             }
+    
+    def validate_completeness(self, rankings: List[Dict[str, Any]]) -> bool:
+        """
+        Validate that all 211 FIFA member nations are present in rankings.
+        
+        Args:
+            rankings: List of team ranking dicts
+            
+        Returns:
+            True if 211 teams present, False otherwise
+        """
+        is_complete = len(rankings) == 211
+        
+        if not is_complete:
+            logger.warning(
+                f"Rankings incomplete: {len(rankings)}/211 teams "
+                f"({'missing' if len(rankings) < 211 else 'extra'} teams)"
+            )
+        else:
+            logger.info(f"Rankings validation passed: 211/211 teams present")
+        
+        return is_complete
+    
+    def get_ranking_for_team(self, fifa_code: str) -> Optional[Dict[str, Any]]:
+        """
+        Get ranking data for a specific team by FIFA code.
+        
+        Args:
+            fifa_code: FIFA country code (e.g., 'ARG', 'FRA', 'BRA')
+            
+        Returns:
+            Team ranking dict or None if not found
+            Format: {rank, team_name, fifa_code, confederation, points, previous_rank, rank_change}
+        """
+        try:
+            # Fetch cached rankings from Firestore
+            rankings_data = self.firestore_manager.get_fifa_rankings()
+            
+            if not rankings_data:
+                logger.warning(f"No FIFA rankings data available for lookup: {fifa_code}")
+                return None
+            
+            rankings = rankings_data.get('rankings', [])
+            
+            # Search for team by FIFA code
+            for team in rankings:
+                if team.get('fifa_code') == fifa_code:
+                    logger.info(f"Found ranking for {fifa_code}: rank #{team.get('rank')}")
+                    return team
+            
+            logger.warning(f"Team not found in FIFA rankings: {fifa_code}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error looking up ranking for {fifa_code}: {e}")
+            return None
