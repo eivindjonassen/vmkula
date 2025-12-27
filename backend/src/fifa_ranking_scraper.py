@@ -136,3 +136,112 @@ class FIFARankingScraper:
         
         # Should never reach here, but satisfy type checker
         raise DataAggregationError(0, "FIFA rankings fetch: max retries exceeded")
+    
+    def parse_rankings(self, html: str) -> List[Dict[str, Any]]:
+        """
+        Parse FIFA rankings HTML table and extract team data.
+        
+        Args:
+            html: Raw HTML content from FIFA rankings page
+            
+        Returns:
+            List of dicts with team ranking data (up to 211 teams)
+            Each dict contains: rank, team_name, fifa_code, confederation, 
+                              points, previous_rank, rank_change
+        
+        Raises:
+            None - logs warnings for parsing errors, returns partial data
+        """
+        rankings: List[Dict[str, Any]] = []
+        
+        try:
+            soup = BeautifulSoup(html, 'lxml')
+            table = soup.find('table', class_='table')
+            
+            if not table:
+                logger.warning("FIFA rankings table not found in HTML")
+                return rankings
+            
+            tbody = table.find('tbody')
+            if not tbody:
+                logger.warning("Table body not found in FIFA rankings table")
+                return rankings
+            
+            rows = tbody.find_all('tr')
+            
+            for row in rows:
+                try:
+                    # Extract all fields
+                    rank_td = row.find('td', class_='rank')
+                    team_name_td = row.find('td', class_='team-name')
+                    fifa_code_td = row.find('td', class_='fifa-code')
+                    confederation_td = row.find('td', class_='confederation')
+                    points_td = row.find('td', class_='points')
+                    previous_rank_td = row.find('td', class_='previous-rank')
+                    
+                    # Skip row if critical fields are missing
+                    if not rank_td or not team_name_td:
+                        logger.warning(f"Skipping row with missing rank or team name")
+                        continue
+                    
+                    # Parse rank (required)
+                    try:
+                        rank = int(rank_td.get_text(strip=True))
+                    except (ValueError, AttributeError) as e:
+                        logger.warning(f"Invalid rank value: {e}")
+                        continue
+                    
+                    # Parse team name (required)
+                    team_name = team_name_td.get_text(strip=True)
+                    if not team_name:
+                        logger.warning(f"Empty team name for rank {rank}")
+                        continue
+                    
+                    # Parse optional fields
+                    fifa_code = fifa_code_td.get_text(strip=True) if fifa_code_td else None
+                    confederation = confederation_td.get_text(strip=True) if confederation_td else None
+                    
+                    # Parse points (optional, float)
+                    points = None
+                    if points_td:
+                        try:
+                            points = float(points_td.get_text(strip=True))
+                        except (ValueError, AttributeError) as e:
+                            logger.warning(f"Invalid points value for {team_name}: {e}")
+                    
+                    # Parse previous rank (optional, int)
+                    previous_rank = None
+                    if previous_rank_td:
+                        try:
+                            previous_rank = int(previous_rank_td.get_text(strip=True))
+                        except (ValueError, AttributeError) as e:
+                            logger.warning(f"Invalid previous rank value for {team_name}: {e}")
+                    
+                    # Calculate rank change
+                    rank_change = None
+                    if previous_rank is not None:
+                        rank_change = previous_rank - rank  # positive = moved up, negative = moved down
+                    
+                    # Build team dict
+                    team_data = {
+                        'rank': rank,
+                        'team_name': team_name,
+                        'fifa_code': fifa_code,
+                        'confederation': confederation,
+                        'points': points,
+                        'previous_rank': previous_rank,
+                        'rank_change': rank_change
+                    }
+                    
+                    rankings.append(team_data)
+                    
+                except Exception as e:
+                    logger.warning(f"Error parsing row: {e}")
+                    continue
+            
+            logger.info(f"Successfully parsed {len(rankings)} teams from FIFA rankings")
+            
+        except Exception as e:
+            logger.error(f"Error parsing FIFA rankings HTML: {e}")
+        
+        return rankings
