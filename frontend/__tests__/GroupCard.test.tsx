@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "./test-utils";
 import GroupCard from "../components/GroupCard";
+import { render, screen } from "./test-utils";
 
 describe("GroupCard", () => {
 	const mockGroup = {
