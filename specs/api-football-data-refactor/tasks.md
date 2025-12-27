@@ -337,6 +337,7 @@
 
 ### T021: Add API-Football fetch_teams method to DataAggregator
 **File**: `backend/src/data_aggregator.py`
+**Status**: ✅ Complete (implemented in Phase 3)
 **Description**: Add method to fetch teams list from API-Football (currently only fetches team stats).
 - Add `fetch_teams(league_id, season)` method to DataAggregator class
 - Endpoint: GET /teams?league={league_id}&season={season}
@@ -350,6 +351,7 @@
 
 ### T022: Add API-Football fetch_fixtures method to DataAggregator
 **File**: `backend/src/data_aggregator.py`
+**Status**: ✅ Complete (implemented in Phase 3)
 **Description**: Add method to fetch fixtures list from API-Football.
 - Add `fetch_fixtures(league_id, season)` method to DataAggregator class
 - Endpoint: GET /fixtures?league={league_id}&season={season}
@@ -363,6 +365,7 @@
 
 ### T023: Update populate script to use new sync module
 **File**: `backend/populate_from_api_football.py`
+**Status**: ✅ Complete
 **Description**: Refactor populate script to use APIFootballSync instead of manual logic.
 - Import APIFootballSync from api_football_sync
 - Add CLI flags: `--sync-teams`, `--sync-fixtures`, `--force-update`
@@ -378,6 +381,7 @@
 
 ### T024: Add backward-compatible fields to teams collection schema
 **File**: `backend/src/firestore_manager.py`
+**Status**: ✅ Complete
 **Description**: Update team creation/update methods to include new sync metadata fields.
 - Modify team document creation to include:
   - api_football_raw_id: str (reference to raw collection document)
@@ -393,6 +397,7 @@
 
 ### T025: Add backward-compatible fields to matches collection schema
 **File**: `backend/src/firestore_manager.py`
+**Status**: ✅ Complete
 **Description**: Update match creation/update methods to include new sync metadata fields.
 - Modify match document creation to include:
   - api_football_raw_id: str
