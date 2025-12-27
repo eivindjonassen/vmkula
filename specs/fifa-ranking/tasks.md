@@ -166,6 +166,7 @@
 **Parallel**: No
 
 ### T014: Implement HTTP fetching with retry logic and rate limiting
+**Status**: ✅ Complete
 **File**: `backend/src/fifa_ranking_scraper.py`  
 **Description**: Implement fetch_rankings_page() and _enforce_rate_limit() methods:
 - Implement `_enforce_rate_limit()`: Calculate elapsed time, sleep if needed to reach MIN_DELAY_SECONDS
