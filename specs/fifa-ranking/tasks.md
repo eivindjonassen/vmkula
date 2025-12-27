@@ -249,7 +249,8 @@
 **Parallel**: No
 
 ### T020: Integrate FIFA rankings into team stats enrichment
-**File**: `backend/src/data_aggregator.py`  
+**Status**: ✅ Complete
+**File**: `backend/src/main.py`  
 **Description**: Modify fetch_team_stats() to include FIFA ranking:
 - After fetching xG and form data, call FIFARankingScraper().get_ranking_for_team(team.fifa_code)
 - If ranking found, add to stats dict: fifa_ranking, fifa_points, fifa_confederation

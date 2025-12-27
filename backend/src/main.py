@@ -615,6 +615,55 @@ def update_predictions() -> Dict[str, Any]:
             f"{firestore_cache_misses} cache misses (API calls made)"
         )
 
+        # Step 2.5: Enrich team stats with FIFA rankings
+        logger.info("Step 2.5: Enriching team stats with FIFA rankings")
+        fifa_scraper = FIFARankingScraper()
+        fifa_enriched_count = 0
+        fifa_missing_count = 0
+        
+        for team in teams:
+            if team.is_placeholder:
+                continue
+            
+            # Skip if no FIFA code available
+            if not team.fifa_code:
+                logger.debug(f"Team {team.name} has no FIFA code - skipping ranking lookup")
+                fifa_missing_count += 1
+                continue
+            
+            try:
+                # Get FIFA ranking for this team
+                ranking_data = fifa_scraper.get_ranking_for_team(team.fifa_code)
+                
+                if ranking_data:
+                    # Add FIFA ranking fields to team stats
+                    if team.id in team_stats:
+                        team_stats[team.id]["fifa_ranking"] = ranking_data.get("rank")
+                        team_stats[team.id]["fifa_points"] = ranking_data.get("points")
+                        team_stats[team.id]["fifa_confederation"] = ranking_data.get("confederation")
+                        fifa_enriched_count += 1
+                        logger.debug(
+                            f"Enriched {team.name} with FIFA ranking: #{ranking_data.get('rank')}"
+                        )
+                else:
+                    # Ranking not found - log warning but continue
+                    logger.warning(
+                        f"FIFA ranking not found for {team.name} (code: {team.fifa_code})"
+                    )
+                    fifa_missing_count += 1
+                    
+            except Exception as e:
+                # Graceful degradation - log warning but don't fail
+                logger.warning(
+                    f"Failed to get FIFA ranking for {team.name}: {e}"
+                )
+                fifa_missing_count += 1
+        
+        logger.info(
+            f"FIFA ranking enrichment: {fifa_enriched_count} teams enriched, "
+            f"{fifa_missing_count} teams missing ranking data"
+        )
+
         # Step 3: Generate AI predictions for all matches (with smart caching)
         logger.info("Step 3: Generating AI predictions with smart caching")
         agent = AIAgent()
