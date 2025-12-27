@@ -52,7 +52,7 @@ jobs:
         id: get-url
         run: |
           SERVICE_URL=$(gcloud run services describe vmkula-backend \
-            --region=us-central1 \
+            --region=europe-west1 \
             --format='value(status.url)' \
             --project=${{ secrets.GCP_PROJECT_ID }})
           echo "service_url=$SERVICE_URL" >> $GITHUB_OUTPUT
