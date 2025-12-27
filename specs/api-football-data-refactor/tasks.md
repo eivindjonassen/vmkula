@@ -416,6 +416,7 @@
 
 ### T026: Update data model documentation
 **File**: `backend/docs/data-model.md`
+**Status**: ✅ Complete
 **Description**: Document new api_football_raw collection and updated schemas.
 - Add section for `api_football_raw` collection:
   - Document structure, document IDs
@@ -433,6 +434,7 @@
 
 ### T027: Create sync process documentation
 **File**: `backend/docs/SYNC_PROCESS.md` (new)
+**Status**: ✅ Complete
 **Description**: Create comprehensive documentation for sync workflow.
 - Document sync endpoint usage:
   - Request examples (curl, Python)
@@ -457,6 +459,7 @@
 
 ### T028: Update README with new architecture and remove SQLite references
 **File**: `backend/README.md`
+**Status**: ✅ Complete
 **Description**: Update README to reflect new architecture and remove outdated SQLite instructions.
 - Remove SQLite setup section (database no longer used)
 - Remove references to worldcup2026.db file
