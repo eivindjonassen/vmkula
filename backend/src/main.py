@@ -30,6 +30,7 @@ from src.exceptions import (
     GeminiFailureError,
 )
 from src.fifa_engine import FifaEngine
+from src.fifa_ranking_scraper import FIFARankingScraper
 from src.firestore_publisher import FirestorePublisher
 
 # Configure logging
@@ -48,6 +49,12 @@ class SyncRequest(BaseModel):
     league_id: int
     season: int
     force_update: bool = False
+
+
+class SyncFIFARankingsRequest(BaseModel):
+    """Request model for FIFA rankings sync endpoint."""
+
+    force_refresh: bool = False
 
 
 # Initialize FastAPI application
@@ -1115,6 +1122,100 @@ async def sync_match_flags():
         logger.error(f"Failed to sync match flags: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to sync match flags: {str(e)}"
+        )
+
+
+@app.post("/api/sync-fifa-rankings")
+def sync_fifa_rankings(request: SyncFIFARankingsRequest) -> Dict[str, Any]:
+    """
+    Manually trigger FIFA world rankings sync.
+
+    This endpoint scrapes FIFA rankings from https://inside.fifa.com/fifa-world-ranking/men
+    and stores them in Firestore with a 30-day TTL cache.
+
+    Args:
+        request: SyncFIFARankingsRequest with force_refresh option
+
+    Returns:
+        Dictionary with:
+            - success: bool
+            - teams_scraped: int
+            - duration_seconds: float
+            - fetched_at: datetime (ISO format string)
+            - cache_expires_at: datetime (ISO format string)
+            - error: str (only if failure)
+            - cached_data_available: bool (only if failure)
+
+    Raises:
+        HTTPException: 500 on scraping failures
+    """
+    logger.info(f"FIFA rankings sync requested (force_refresh={request.force_refresh})")
+    
+    try:
+        # Instantiate scraper and run scrape_and_store workflow
+        scraper = FIFARankingScraper()
+        result = scraper.scrape_and_store(force_refresh=request.force_refresh)
+        
+        # Build response
+        if result.get('success'):
+            response = {
+                "success": True,
+                "teams_scraped": result.get('teams_scraped', 0),
+                "duration_seconds": result.get('duration_seconds', 0.0),
+                "fetched_at": result.get('fetched_at').isoformat() if result.get('fetched_at') else None,
+                "cache_expires_at": result.get('cache_expires_at').isoformat() if result.get('cache_expires_at') else None,
+                "source_url": scraper.RANKINGS_URL,
+            }
+            
+            if result.get('cache_hit'):
+                response["cache_hit"] = True
+            
+            logger.info(
+                f"FIFA rankings sync SUCCESS: {result.get('teams_scraped')} teams "
+                f"in {result.get('duration_seconds'):.2f}s"
+            )
+            return response
+        else:
+            # Scraping failed - check if cached data is available
+            cached_available = False
+            try:
+                fs_manager = FirestoreManager()
+                cached_data = fs_manager.get_fifa_rankings()
+                cached_available = cached_data is not None
+            except Exception:
+                pass
+            
+            error_msg = result.get('error_message', 'Unknown error')
+            logger.error(f"FIFA rankings sync FAILED: {error_msg}")
+            
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "success": False,
+                    "error": error_msg,
+                    "teams_scraped": 0,
+                    "cached_data_available": cached_available,
+                }
+            )
+    
+    except HTTPException:
+        raise
+    except DataAggregationError as e:
+        logger.error(f"FIFA rankings sync failed with DataAggregationError: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "success": False,
+                "error": f"Failed to scrape FIFA rankings: {str(e)}",
+                "teams_scraped": 0,
+                "cached_data_available": False,
+            }
+        )
+    except Exception as e:
+        logger.error(f"FIFA rankings sync failed with unexpected error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"FIFA rankings sync failed: {str(e)}"
         )
 
 

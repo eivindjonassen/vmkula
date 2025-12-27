@@ -235,6 +235,7 @@
 ## Phase 4: API Integration & Endpoints (3 tasks)
 
 ### T019: Create FastAPI endpoint for manual FIFA rankings sync
+**Status**: ✅ Complete
 **File**: `backend/src/main.py`  
 **Description**: Add POST /api/sync-fifa-rankings endpoint:
 - Define request model: `class SyncFIFARankingsRequest(BaseModel): force_refresh: bool = False`
